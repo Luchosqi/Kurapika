@@ -30,7 +30,7 @@
       <div>
         <p class="eyebrow">CONTROL DE SESIONES / 01</p>
         <h1 id="page-title">Un lugar para coordinar el trabajo.</h1>
-        <p class="intro-copy">Asigna tareas a cada CLI, sigue su salida y continúa sus sesiones desde este equipo.</p>
+        <p class="intro-copy">Asigna tareas, observa cada CLI y conversa en terminales abiertas desde este equipo.</p>
       </div>
       <div class="workspace-box">
         <span class="workspace-label">Proyecto activo</span>
@@ -102,9 +102,25 @@
           <span id="console-status" class="status-badge">Inactivo</span>
         </div>
         <div id="console-tabs" class="console-tabs" role="tablist" aria-label="Sesiones de agentes"></div>
+        <div class="console-view-switch" role="group" aria-label="Vista de sesión">
+          <button id="view-tasks" type="button" class="view-button active" aria-pressed="true">Tareas</button>
+          <button id="view-terminal" type="button" class="view-button" aria-pressed="false">Terminal interactiva</button>
+        </div>
         <div class="console-meta"><span id="session-label">Sin sesión iniciada</span><span id="mode-label">Solo lectura</span></div>
         <div id="console-output" class="console-output" role="log" aria-live="polite" aria-label="Salida del agente"><p class="console-empty">Selecciona un agente y envíale una tarea para ver su salida aquí.</p></div>
-        <div class="console-bottom">
+        <div id="terminal-screen" class="terminal-screen" role="log" aria-label="Pantalla de terminal" hidden><pre id="terminal-text"></pre></div>
+        <div id="terminal-controls" class="terminal-controls" hidden>
+          <p id="terminal-hint">Abre una CLI y envíale mensajes desde aquí.</p>
+          <div class="terminal-buttons">
+            <button id="start-terminal" class="secondary-button" type="button">Abrir terminal</button>
+            <button id="stop-terminal" class="danger-button" type="button" disabled>Cerrar terminal</button>
+          </div>
+          <form id="terminal-form" class="terminal-form">
+            <label for="terminal-input">Enviar a la CLI abierta</label>
+            <div><input id="terminal-input" type="text" maxlength="4000" autocomplete="off" placeholder="Escribe un mensaje o una respuesta…" disabled><button type="submit" class="secondary-button" disabled>Enviar ↵</button></div>
+          </form>
+        </div>
+        <div id="console-bottom" class="console-bottom">
           <p id="console-task" class="console-task">Ninguna tarea en curso.</p>
           <div class="console-actions">
             <button id="use-output" class="text-button" type="button" disabled>Usar salida como contexto</button>

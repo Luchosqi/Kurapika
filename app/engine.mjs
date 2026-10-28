@@ -24,12 +24,14 @@ export class KurapikaEngine extends EventEmitter {
     this.baseStateDir = path.resolve(stateDir);
     this.spawnProcess = spawnProcess;
     this.running = new Map();
+    this.terminals = null;
     fs.mkdirSync(this.baseStateDir, { recursive: true, mode: 0o700 });
     this.openWorkspace(workspace);
   }
 
   openWorkspace(directory) {
     if (this.running.size) throw new Error('Detén las tareas activas antes de cambiar de proyecto.');
+    if (this.terminals?.hasRunning()) throw new Error('Cierra las terminales antes de cambiar de proyecto.');
     this.workspace = resolveWorkspace(directory);
     const key = createHash('sha256').update(this.workspace).digest('hex').slice(0, 20);
     this.projectStateDir = path.join(this.baseStateDir, key);
@@ -44,6 +46,7 @@ export class KurapikaEngine extends EventEmitter {
     }));
     this.state = { workspace: this.workspace, agents,
       activity: Array.isArray(prior.activity) ? prior.activity.slice(0, 80) : [] };
+    this.terminals?.openWorkspace(this.workspace);
     this.persist();
     return this.getState();
   }
@@ -83,11 +86,13 @@ export class KurapikaEngine extends EventEmitter {
     const task = validateTask(input);
     const agent = this.state.agents[task.provider];
     if (agent.status === 'running' || agent.status === 'stopping') throw new Error('El agente ya está ejecutando una tarea.');
+    if (this.terminals?.isRunning(task.provider)) throw new Error('Cierra la terminal de esta CLI antes de enviarle una tarea.');
     if (agent.status === 'handoff') throw new Error('Registra el resultado manual o inicia una sesión nueva.');
     if (task.mode === 'edit' && Object.values(this.state.agents).some(other =>
       other.mode === 'edit' && (other.status === 'running' || other.status === 'stopping'))) {
       throw new Error('Ya hay una tarea de edición en curso. Espera a que termine.');
     }
+    if (task.mode === 'edit' && this.terminals?.hasEditing()) throw new Error('Ya hay una edición activa en una terminal.');
     if (agent.sessionId && agent.sessionMode && agent.sessionMode !== task.mode) {
       throw new Error('Este hilo tiene otro modo. Inicia una sesión nueva para cambiar permisos.');
     }

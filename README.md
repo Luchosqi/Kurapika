@@ -1,10 +1,10 @@
 # Kurapika
 
-Kurapika es una **aplicación de escritorio con Electron** para coordinar tareas entre las CLI nativas de Codex, GitHub Copilot y OpenCode. Conserva las sesiones de cada cliente, muestra su salida, permite detener ejecuciones y pasar resultados como contexto a otro agente. Antigravity se integra mediante entrega manual de tareas y resultados. El nombre aporta identidad visual; el programa no adopta una personalidad.
+Kurapika es una **aplicación de escritorio con Electron** para coordinar las CLI nativas de Codex, GitHub Copilot y OpenCode. Permite ejecutar tareas acotadas o abrir terminales interactivas dentro de la ventana. Conserva las sesiones de tareas de cada cliente, muestra su salida y permite pasar resultados como contexto a otro agente. Antigravity se integra mediante entrega manual de tareas y resultados. El nombre aporta identidad visual; el programa no adopta una personalidad.
 
 ## Iniciar la aplicación
 
-Requiere Node.js 20 o posterior, npm y un entorno gráfico. Instala Electron una vez:
+Requiere Node.js 20 o posterior, npm y un entorno gráfico. Las terminales interactivas requieren Linux con `script` de util-linux. Instala Electron una vez:
 
 ```sh
 cd Kurapika
@@ -12,9 +12,9 @@ npm install
 npm start
 ```
 
-La ventana se abre directamente; Kurapika no inicia un servidor HTTP. Durante el desarrollo, el proyecto inicial es este repositorio. Usa **Cambiar proyecto** para elegir otra carpeta; la elección se recuerda para futuras aperturas. También puedes definir `KURAPIKA_WORKSPACE=/ruta/al/proyecto` al iniciar. Las sesiones y transcripciones se guardan en el directorio de datos de Electron para Kurapika, separadas por proyecto. `KURAPIKA_STATE_DIR` permite mover ese almacenamiento si lo necesitas.
+La ventana se abre directamente; Kurapika no inicia un servidor HTTP. Durante el desarrollo, el proyecto inicial es este repositorio. Usa **Cambiar proyecto** para elegir otra carpeta; la elección se recuerda para futuras aperturas. También puedes definir `KURAPIKA_WORKSPACE=/ruta/al/proyecto` al iniciar. Las sesiones y transcripciones de tareas se guardan en el directorio de datos de Electron para Kurapika, separadas por proyecto. `KURAPIKA_STATE_DIR` permite mover ese almacenamiento si lo necesitas.
 
-La interfaz permite elegir agente y modo **solo lectura** o **puede editar**, enviar tareas, ver la salida mientras trabajan, continuar el hilo nativo cuando se dispone de su ID, detener el proceso y usar la respuesta como contexto de otra tarea. Una tarea activa por agente evita que dos mensajes compitan por la misma sesión; solo una tarea de edición puede estar en curso en el proyecto a la vez. La ejecución es local: cada CLI conserva su propia autenticación.
+La interfaz permite elegir agente y modo **solo lectura** o **puede editar**, enviar tareas, ver la salida mientras trabajan, continuar el hilo nativo cuando se dispone de su ID, detener el proceso y usar la respuesta como contexto de otra tarea. En **Terminal interactiva** puedes abrir una CLI, leer su pantalla y enviarle mensajes o respuestas sin cerrar el proceso. Se evita abrir una terminal y una tarea para la misma CLI a la vez; solo una edición puede estar activa en el proyecto. La ejecución es local: cada CLI conserva su propia autenticación.
 
 | Agente | Comando usado | Preparación |
 | --- | --- | --- |
@@ -27,7 +27,7 @@ Las CLI deben estar instaladas en `PATH` y autenticadas previamente en sus clien
 
 Codex ejecuta cada turno con el sandbox elegido y sin solicitudes de aprobación interactivas. Copilot requiere `--allow-all-tools` en modo no interactivo: en solo lectura recibe únicamente herramientas de inspección; en edición usa `--assisted-approval`, con la verificación de rutas propia de Copilot. Si necesitas revisar cada permiso en persona, usa la CLI oficial directamente. OpenCode usa sus agentes `plan` y `build`; verifica los permisos de tu instalación antes de asignarle trabajo de edición.
 
-La consola de la aplicación transmite la salida de cada tarea y reanuda la sesión nativa entre tareas. No es una terminal PTY: no admite teclear dentro de una ejecución en curso. Para enviar otra instrucción, espera que termine el turno y asígnala al mismo agente. Electron usa una ventana aislada y un puente IPC de funciones concretas para comunicarse con el motor local.
+La vista **Tareas** transmite la salida estructurada de cada ejecución y reanuda la sesión nativa entre turnos. La vista **Terminal interactiva** mantiene una PTY real mediante `script` mientras Kurapika está abierto; al cerrar la aplicación se detienen esos procesos. La pantalla se representa como texto de ancho fijo y acepta líneas completas. Los programas que requieran teclas especiales o controles gráficos avanzados pueden necesitar su terminal oficial. Electron usa una ventana aislada y un puente IPC de funciones concretas para comunicarse con el motor local.
 
 Ver [arquitectura de sesiones nativas](docs/ecosistema-nativo.md) para el diseño y [análisis del fork](docs/analisis-adaptacion.md) para el contexto del proyecto original. Ejecuta `npm test` para validar las reglas de despacho.
 

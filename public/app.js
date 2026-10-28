@@ -7,7 +7,9 @@ const meta = {
 const statuses = { idle: 'Inactivo', running: 'Trabajando', stopping: 'Deteniendo', stopped: 'Detenido',
   completed: 'Completado', failed: 'Falló', interrupted: 'Interrumpido', handoff: 'Pendiente manual' };
 let state = null;
+let terminals = null;
 let selected = 'codex';
+let consoleView = 'tasks';
 let noticeTimer;
 
 const $ = id => document.getElementById(id);
@@ -27,7 +29,7 @@ function notify(message, error = false) {
 }
 async function refresh() {
   try {
-    state = await window.kurapika.getState();
+    [state, terminals] = await Promise.all([window.kurapika.getState(), window.kurapika.getTerminals()]);
     render();
     $('connection-label').textContent = 'Aplicación activa';
     document.querySelector('.connection').classList.add('online');
@@ -43,8 +45,9 @@ function formatTime(value) {
 }
 function renderStats() {
   const agents = Object.values(state.agents);
+  const activeTerminals = terminals ? Object.values(terminals).filter(terminal => terminal.status === 'running' || terminal.status === 'stopping').length : 0;
   $('stat-total').textContent = String(agents.length);
-  $('stat-running').textContent = String(agents.filter(a => a.status === 'running' || a.status === 'stopping').length);
+  $('stat-running').textContent = String(agents.filter(a => a.status === 'running' || a.status === 'stopping').length + activeTerminals);
   $('stat-completed').textContent = String(agents.filter(a => a.status === 'completed').length);
   $('stat-handoff').textContent = String(agents.filter(a => a.status === 'handoff').length);
   $('workspace-path').textContent = state.workspace;
@@ -55,14 +58,16 @@ function renderAgents() {
   grid.replaceChildren();
   for (const [id, info] of Object.entries(meta)) {
     const agent = state.agents[id];
+    const terminal = terminals?.[id];
+    const visibleStatus = terminal?.status === 'running' ? 'running' : agent.status;
     const card = element('button', `agent-card${selected === id ? ' selected' : ''}`);
     card.type = 'button';
-    card.setAttribute('aria-label', `${info.name}: ${statuses[agent.status] || agent.status}. Ver sesión.`);
+    card.setAttribute('aria-label', `${info.name}: ${terminal?.status === 'running' ? 'Terminal abierta' : statuses[agent.status] || agent.status}. Ver sesión.`);
     card.addEventListener('click', () => select(id));
     const head = element('div', 'agent-head');
-    head.append(element('span', 'agent-monogram', info.monogram), element('span', `status-dot ${agent.status}`));
+    head.append(element('span', 'agent-monogram', info.monogram), element('span', `status-dot ${visibleStatus}`));
     card.append(head, element('p', 'agent-name', info.name),
-      element('p', 'agent-detail', agent.status === 'running' ? 'Trabajando en la tarea actual' : info.detail));
+      element('p', 'agent-detail', terminal?.status === 'running' ? 'Terminal interactiva abierta' : agent.status === 'running' ? 'Trabajando en la tarea actual' : info.detail));
     grid.append(card);
   }
 }
@@ -80,11 +85,38 @@ function renderTabs() {
 }
 function renderConsole() {
   const agent = state.agents[selected];
-  $('console-title').textContent = `${meta[selected].name} · consola`;
-  $('console-status').textContent = statuses[agent.status] || agent.status;
-  $('console-status').className = `status-badge ${agent.status}`;
-  $('session-label').textContent = agent.sessionId ? `Sesión ${agent.sessionId}` : selected === 'antigravity' ? 'Entrega manual' : 'Sin sesión iniciada';
-  $('mode-label').textContent = agent.sessionMode === 'edit' ? 'Puede editar' : 'Solo lectura';
+  const terminal = terminals?.[selected];
+  const terminalView = consoleView === 'terminal';
+  const status = terminalView ? terminal?.status || 'idle' : agent.status;
+  $('console-title').textContent = `${meta[selected].name} · ${terminalView ? 'terminal' : 'consola'}`;
+  $('console-status').textContent = statuses[status] || status;
+  $('console-status').className = `status-badge ${status}`;
+  $('session-label').textContent = terminalView ? 'Proceso interactivo local' : agent.sessionId ? `Sesión ${agent.sessionId}` : selected === 'antigravity' ? 'Entrega manual' : 'Sin sesión iniciada';
+  $('mode-label').textContent = (terminalView ? terminal?.mode : agent.sessionMode) === 'edit' ? 'Puede editar' : 'Solo lectura';
+  $('view-tasks').classList.toggle('active', !terminalView);
+  $('view-terminal').classList.toggle('active', terminalView);
+  $('view-tasks').setAttribute('aria-pressed', String(!terminalView));
+  $('view-terminal').setAttribute('aria-pressed', String(terminalView));
+  $('console-output').hidden = terminalView;
+  $('console-bottom').hidden = terminalView;
+  $('terminal-screen').hidden = !terminalView;
+  $('terminal-controls').hidden = !terminalView;
+  $('manual-result-form').hidden = terminalView || selected !== 'antigravity' || agent.status !== 'handoff';
+  if (terminalView) {
+    const content = terminal?.screen || (selected === 'antigravity'
+      ? 'Antigravity Student requiere entrega manual desde su propia aplicación.'
+      : 'Abre la terminal para ver la pantalla de la CLI aquí.');
+    if ($('terminal-text').textContent !== content) $('terminal-text').textContent = content;
+    $('terminal-hint').textContent = selected === 'antigravity'
+      ? 'Usa la vista Tareas para preparar y registrar entregas manuales.'
+      : terminal?.status === 'running' ? 'La CLI sigue abierta. Puedes enviarle mensajes o respuestas.'
+        : 'Abrirá la CLI en el proyecto activo con el alcance elegido en Nueva tarea.';
+    $('start-terminal').disabled = selected === 'antigravity' || terminal?.status === 'running' || terminal?.status === 'stopping';
+    $('stop-terminal').disabled = terminal?.status !== 'running';
+    $('terminal-input').disabled = terminal?.status !== 'running';
+    $('terminal-form').querySelector('button').disabled = terminal?.status !== 'running';
+    return;
+  }
   const output = $('console-output');
   const nearBottom = output.scrollTop + output.clientHeight >= output.scrollHeight - 40;
   const content = agent.output || (agent.status === 'handoff' ? 'Tarea preparada. Ejecútala directamente en Antigravity y pega aquí el resultado.' : 'Selecciona un agente y envíale una tarea para ver su salida aquí.');
@@ -99,7 +131,6 @@ function renderConsole() {
   $('stop-session').disabled = agent.status !== 'running';
   $('reset-session').disabled = agent.status === 'running' || agent.status === 'stopping';
   $('copy-handoff').hidden = selected !== 'antigravity' || !agent.handoff;
-  $('manual-result-form').hidden = selected !== 'antigravity' || agent.status !== 'handoff';
 }
 function renderActivity() {
   const list = $('activity-list');
@@ -129,6 +160,10 @@ function select(id) {
   selected = id;
   $('provider-select').value = id;
   updateModeHint();
+  render();
+}
+function switchView(view) {
+  consoleView = view;
   render();
 }
 function updateModeHint() {
@@ -164,6 +199,27 @@ $('task-form').addEventListener('submit', async event => {
 });
 $('provider-select').addEventListener('change', () => select($('provider-select').value));
 $('mode-select').addEventListener('change', updateModeHint);
+$('view-tasks').addEventListener('click', () => switchView('tasks'));
+$('view-terminal').addEventListener('click', () => switchView('terminal'));
+$('start-terminal').addEventListener('click', async () => {
+  try {
+    terminals = await window.kurapika.startTerminal(selected, $('mode-select').value);
+    render();
+    $('terminal-input').focus();
+    notify(`Terminal de ${meta[selected].name} abierta.`);
+  } catch (error) { notify(error.message, true); }
+});
+$('stop-terminal').addEventListener('click', async () => {
+  try { terminals = await window.kurapika.stopTerminal(selected); render(); notify('Se solicitó cerrar la terminal.'); }
+  catch (error) { notify(error.message, true); }
+});
+$('terminal-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const input = $('terminal-input').value;
+  if (!input.trim()) return;
+  try { await window.kurapika.sendTerminal(selected, input); $('terminal-input').value = ''; }
+  catch (error) { notify(error.message, true); }
+});
 $('choose-workspace').addEventListener('click', async () => {
   try {
     state = await window.kurapika.chooseWorkspace();
@@ -203,4 +259,5 @@ $('manual-result-form').addEventListener('submit', async event => {
 
 updateModeHint();
 window.kurapika.onState(next => { state = next; render(); });
+window.kurapika.onTerminals(next => { terminals = next; render(); });
 refresh();

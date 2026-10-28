@@ -59,5 +59,9 @@ test('Electron carga la ventana aislada y limita el puente IPC', async () => {
   const event = { sender: createdWindow.webContents, senderFrame: createdWindow.webContents.mainFrame };
   const state = channels.get('kurapika:get-state')(event);
   assert.ok(state.agents.codex);
+  const terminals = channels.get('kurapika:get-terminals')(event);
+  assert.equal(terminals.codex.status, 'idle');
+  assert.equal(terminals.copilot.status, 'idle');
   assert.throws(() => channels.get('kurapika:get-state')({ sender: {} }), /no autorizada/);
+  assert.throws(() => channels.get('kurapika:start-terminal')({ sender: {} }, 'codex', 'inspect'), /no autorizada/);
 });

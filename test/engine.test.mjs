@@ -57,3 +57,18 @@ test('aísla el historial de sesiones por proyecto', () => {
   assert.equal(engine.getState().agents.codex.sessionId, first.agents.codex.sessionId);
   assert.equal(engine.getState().agents.antigravity.output, first.agents.antigravity.output);
 });
+
+test('coordina bloqueos de edición y proyecto con terminales abiertas', () => {
+  engine.terminals = {
+    hasRunning: () => true,
+    hasEditing: () => true,
+    isRunning: provider => provider === 'codex',
+  };
+  try {
+    assert.throws(() => engine.sendTask({ provider: 'codex', mode: 'inspect', prompt: 'Revisar' }), /Cierra la terminal/);
+    assert.throws(() => engine.sendTask({ provider: 'opencode', mode: 'edit', prompt: 'Editar' }), /edición activa/);
+    assert.throws(() => engine.openWorkspace(projectB), /Cierra las terminales/);
+  } finally {
+    engine.terminals = null;
+  }
+});
