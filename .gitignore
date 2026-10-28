@@ -30,5 +30,5 @@ service.json
 # Logs
 *.log
 
-# Local Kurapika task and CLI session state
+# Optional local override for Kurapika task and CLI session state
 .kurapika/

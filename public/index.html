@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101217">
   <meta name="description" content="Kurapika: control local de agentes y sesiones CLI.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Kurapika · Centro de agentes</title>
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
@@ -34,6 +35,7 @@
       <div class="workspace-box">
         <span class="workspace-label">Proyecto activo</span>
         <code id="workspace-path">Cargando…</code>
+        <button id="choose-workspace" class="workspace-change" type="button">Cambiar proyecto</button>
       </div>
     </section>
 

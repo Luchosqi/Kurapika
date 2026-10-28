@@ -27,7 +27,7 @@ Dejar el proceso abierto **no es un requisito** para continuar la misma conversa
 
 ## Estado implementado en Kurapika
 
-El panel local de este fork ya despacha tareas a `codex exec`, `copilot -p --model auto` y `opencode run`, conserva los IDs de sesión devueltos por cada cliente, transmite la salida al navegador y permite detener o reiniciar una sesión. Un resultado puede copiarse al borrador de una tarea para otro cliente. Antigravity tiene un buzón manual. Las tareas de solo lectura pueden coexistir; el servidor admite una sola edición activa en el proyecto. El estado y los logs quedan en `.kurapika/`.
+La aplicación Electron de este fork ya despacha tareas a `codex exec`, `copilot -p --model auto` y `opencode run`, conserva los IDs de sesión devueltos por cada cliente, transmite la salida a su ventana y permite detener o reiniciar una sesión. Un resultado puede copiarse al borrador de una tarea para otro cliente. Antigravity tiene un buzón manual. Las tareas de solo lectura pueden coexistir; el motor admite una sola edición activa en el proyecto. El estado y los logs quedan en el directorio de datos de la aplicación, separados por proyecto. La ventana y el motor se comunican por IPC local, sin servidor HTTP.
 
 Esta primera implementación usa **un proceso por turno**. No proporciona una PTY interactiva ni asignación automática de roles: el usuario elige cliente y alcance. Tampoco verifica todavía la autenticación ni ejecuta una tarea real contra los planes del usuario desde este entorno. Las pruebas incluidas usan clientes falsos para comprobar el despacho y la API.
 

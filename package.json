@@ -3,9 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
-    "start": "node app/server.mjs",
+    "start": "electron .",
     "test": "node --test"
+  },
+  "devDependencies": {
+    "electron": "45.1.0"
   },
   "engines": {
     "node": ">=20"

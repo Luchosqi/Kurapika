@@ -25,17 +25,11 @@ function notify(message, error = false) {
   clearTimeout(noticeTimer);
   noticeTimer = setTimeout(() => box.classList.remove('visible'), 5200);
 }
-async function request(url, options = {}) {
-  const response = await fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || `Error ${response.status}`);
-  return data;
-}
 async function refresh() {
   try {
-    state = await request('/api/state');
+    state = await window.kurapika.getState();
     render();
-    $('connection-label').textContent = 'Servicio activo';
+    $('connection-label').textContent = 'Aplicación activa';
     document.querySelector('.connection').classList.add('online');
   } catch {
     $('connection-label').textContent = 'Sin conexión';
@@ -160,7 +154,7 @@ $('task-form').addEventListener('submit', async event => {
   const button = $('task-form').querySelector('button[type="submit"]');
   button.disabled = true;
   try {
-    await request('/api/tasks', { method: 'POST', body: JSON.stringify({ provider, mode, prompt }) });
+    await window.kurapika.sendTask({ provider, mode, prompt });
     $('task-prompt').value = '';
     select(provider);
     await refresh();
@@ -170,12 +164,18 @@ $('task-form').addEventListener('submit', async event => {
 });
 $('provider-select').addEventListener('change', () => select($('provider-select').value));
 $('mode-select').addEventListener('change', updateModeHint);
+$('choose-workspace').addEventListener('click', async () => {
+  try {
+    state = await window.kurapika.chooseWorkspace();
+    render();
+  } catch (error) { notify(error.message, true); }
+});
 $('stop-session').addEventListener('click', async () => {
-  try { await request(`/api/agents/${selected}/stop`, { method: 'POST', body: '{}' }); await refresh(); notify('Se solicitó detener el proceso.'); }
+  try { await window.kurapika.stop(selected); await refresh(); notify('Se solicitó detener el proceso.'); }
   catch (error) { notify(error.message, true); }
 });
 $('reset-session').addEventListener('click', async () => {
-  try { await request(`/api/agents/${selected}/reset`, { method: 'POST', body: '{}' }); await refresh(); notify('La próxima tarea iniciará una sesión nueva.'); }
+  try { await window.kurapika.reset(selected); await refresh(); notify('La próxima tarea iniciará una sesión nueva.'); }
   catch (error) { notify(error.message, true); }
 });
 $('use-output').addEventListener('click', () => {
@@ -194,7 +194,7 @@ $('manual-result-form').addEventListener('submit', async event => {
   const result = $('manual-result').value.trim();
   if (!result) return;
   try {
-    await request('/api/agents/antigravity/result', { method: 'POST', body: JSON.stringify({ result }) });
+    await window.kurapika.recordResult(result);
     $('manual-result').value = '';
     await refresh();
     notify('Resultado manual registrado.');
@@ -202,11 +202,5 @@ $('manual-result-form').addEventListener('submit', async event => {
 });
 
 updateModeHint();
+window.kurapika.onState(next => { state = next; render(); });
 refresh();
-const events = new EventSource('/api/events');
-events.onmessage = refresh;
-events.onerror = () => {
-  $('connection-label').textContent = 'Reconectando';
-  document.querySelector('.connection').classList.remove('online');
-};
-setInterval(refresh, 10000);
