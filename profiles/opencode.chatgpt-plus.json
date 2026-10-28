@@ -1,0 +1,244 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "openai/gpt-6.1-sol",
+  "default_agent": "orchestrator",
+  "agents": {
+    "build": {
+      "model": {
+        "providerID": "opencode",
+        "model": "deepseek-v4.1-flash-free"
+      }
+    },
+    "plan": {
+      "model": {
+        "providerID": "openai",
+        "model": "gpt-6.1-sol",
+        "variant": "high"
+      }
+    },
+    "orchestrator": {
+      "permissions": [
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "general",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "explore",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "tester",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "reviewer",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "architect",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "reviewer-critical",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "ui-designer",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "ui-builder",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "visual-qa",
+          "effect": "allow"
+        }
+      ]
+    },
+    "general": {
+      "model": {
+        "providerID": "opencode",
+        "model": "mimo-v2.6-flash-free"
+      }
+    },
+    "explore": {
+      "model": {
+        "providerID": "opencode",
+        "model": "mimo-v2.6-flash-free"
+      }
+    },
+    "reviewer": {
+      "model": {
+        "providerID": "opencode",
+        "model": "deepseek-v4.1-flash-free"
+      },
+      "permissions": [
+        {
+          "action": "edit",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ]
+    },
+    "architect": {
+      "model": {
+        "providerID": "openai",
+        "model": "gpt-6.1-sol",
+        "variant": "high"
+      },
+      "permissions": [
+        {
+          "action": "edit",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ]
+    },
+    "tester": {
+      "model": {
+        "providerID": "opencode",
+        "model": "mimo-v2.6-flash-free"
+      },
+      "permissions": [
+        {
+          "action": "edit",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
+          "resource": "*",
+          "effect": "ask"
+        }
+      ]
+    },
+    "reviewer-critical": {
+      "model": {
+        "providerID": "openai",
+        "model": "gpt-6.1-sol",
+        "variant": "high"
+      },
+      "permissions": [
+        {
+          "action": "edit",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ]
+    },
+    "ui-designer": {
+      "model": {
+        "providerID": "openai",
+        "model": "gpt-6.1-sol"
+      },
+      "permissions": [
+        {
+          "action": "edit",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ]
+    },
+    "ui-builder": {
+      "model": {
+        "providerID": "opencode",
+        "model": "mimo-v2.6-flash-free"
+      },
+      "permissions": [
+        {
+          "action": "shell",
+          "resource": "*",
+          "effect": "ask"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ]
+    },
+    "visual-qa": {
+      "model": {
+        "providerID": "openai",
+        "model": "gpt-6.1-sol"
+      },
+      "permissions": [
+        {
+          "action": "edit",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ]
+    }
+  }
+}

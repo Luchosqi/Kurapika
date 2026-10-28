@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101217">
+  <meta name="description" content="Kurapika: control local de agentes y sesiones CLI.">
+  <title>Kurapika · Centro de agentes</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Ir al contenido</a>
+  <header class="topbar">
+    <div class="brand" aria-label="Kurapika">
+      <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+      <span class="brand-name">KURAPIKA</span>
+      <span class="brand-divider"></span>
+      <span class="brand-subtitle">Centro de agentes</span>
+    </div>
+    <div class="topbar-right">
+      <span class="connection"><span class="connection-dot"></span><span id="connection-label">Conectando</span></span>
+      <span class="local-badge">LOCAL</span>
+    </div>
+  </header>
+
+  <main id="main" class="shell">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">CONTROL DE SESIONES / 01</p>
+        <h1 id="page-title">Un lugar para coordinar el trabajo.</h1>
+        <p class="intro-copy">Asigna tareas a cada CLI, sigue su salida y continúa sus sesiones desde este equipo.</p>
+      </div>
+      <div class="workspace-box">
+        <span class="workspace-label">Proyecto activo</span>
+        <code id="workspace-path">Cargando…</code>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="Resumen de actividad">
+      <div class="stat"><span class="stat-label">Clientes integrados</span><strong id="stat-total">4</strong><span class="stat-foot">3 CLI + 1 entrega manual</span></div>
+      <div class="stat"><span class="stat-label">En ejecución</span><strong id="stat-running">0</strong><span class="stat-foot">Procesos activos ahora</span></div>
+      <div class="stat"><span class="stat-label">Completadas</span><strong id="stat-completed">0</strong><span class="stat-foot">Sesiones con resultado</span></div>
+      <div class="stat"><span class="stat-label">Entrega pendiente</span><strong id="stat-handoff">0</strong><span class="stat-foot">Antigravity manual</span></div>
+    </section>
+
+    <div class="content-grid">
+      <div class="left-column">
+        <section class="panel composer" aria-labelledby="composer-title">
+          <div class="section-heading">
+            <div><p class="eyebrow">NUEVA TAREA</p><h2 id="composer-title">Enviar trabajo</h2></div>
+            <span class="section-index">01 / 03</span>
+          </div>
+          <form id="task-form">
+            <div class="form-row">
+              <label class="field">Agente
+                <select id="provider-select" name="provider">
+                  <option value="codex">Codex</option>
+                  <option value="copilot">Copilot</option>
+                  <option value="opencode">OpenCode</option>
+                  <option value="antigravity">Antigravity · manual</option>
+                </select>
+              </label>
+              <label class="field">Alcance
+                <select id="mode-select" name="mode">
+                  <option value="inspect">Solo lectura</option>
+                  <option value="edit">Puede editar</option>
+                </select>
+              </label>
+            </div>
+            <label class="field task-field" for="task-prompt">Instrucción</label>
+            <textarea id="task-prompt" name="prompt" rows="5" maxlength="12000" placeholder="Describe el objetivo, los archivos relevantes y cómo sabremos que terminó…" required></textarea>
+            <div class="composer-footer">
+              <p id="mode-hint">El agente inspeccionará el proyecto sin modificar archivos.</p>
+              <button class="primary-button" type="submit"><span>Iniciar tarea</span><span aria-hidden="true">↗</span></button>
+            </div>
+          </form>
+        </section>
+
+        <section class="agents-section" aria-labelledby="agents-title">
+          <div class="section-heading outside-heading">
+            <div><p class="eyebrow">EQUIPO</p><h2 id="agents-title">Agentes</h2></div>
+            <span class="section-index">02 / 03</span>
+          </div>
+          <div id="agent-grid" class="agent-grid"></div>
+        </section>
+
+        <section class="panel activity-panel" aria-labelledby="activity-title">
+          <div class="section-heading">
+            <div><p class="eyebrow">REGISTRO</p><h2 id="activity-title">Actividad reciente</h2></div>
+            <span class="section-index">03 / 03</span>
+          </div>
+          <ol id="activity-list" class="activity-list"></ol>
+        </section>
+      </div>
+
+      <section class="panel console-panel" aria-labelledby="console-title">
+        <div class="console-top">
+          <div class="console-heading"><span class="console-icon" aria-hidden="true">&gt;_</span><div><p class="eyebrow">SESIÓN ACTIVA</p><h2 id="console-title">Consola de agente</h2></div></div>
+          <span id="console-status" class="status-badge">Inactivo</span>
+        </div>
+        <div id="console-tabs" class="console-tabs" role="tablist" aria-label="Sesiones de agentes"></div>
+        <div class="console-meta"><span id="session-label">Sin sesión iniciada</span><span id="mode-label">Solo lectura</span></div>
+        <div id="console-output" class="console-output" role="log" aria-live="polite" aria-label="Salida del agente"><p class="console-empty">Selecciona un agente y envíale una tarea para ver su salida aquí.</p></div>
+        <div class="console-bottom">
+          <p id="console-task" class="console-task">Ninguna tarea en curso.</p>
+          <div class="console-actions">
+            <button id="use-output" class="text-button" type="button" disabled>Usar salida como contexto</button>
+            <button id="copy-handoff" class="text-button" type="button" hidden>Copiar tarea</button>
+            <button id="reset-session" class="text-button" type="button">Nueva sesión</button>
+            <button id="stop-session" class="danger-button" type="button" disabled>Detener</button>
+          </div>
+        </div>
+        <form id="manual-result-form" class="manual-result" hidden>
+          <label for="manual-result">Resultado de Antigravity</label>
+          <textarea id="manual-result" rows="4" maxlength="12000" placeholder="Pega aquí el resultado que obtuviste directamente en Antigravity…"></textarea>
+          <button class="secondary-button" type="submit">Registrar resultado manual</button>
+        </form>
+      </section>
+    </div>
+    <p id="notice" class="notice" role="status" aria-live="polite"></p>
+  </main>
+</body>
+</html>

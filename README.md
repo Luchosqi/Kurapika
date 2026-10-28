@@ -1,4 +1,38 @@
-# opencode-orchestrator
+# Kurapika
+
+Kurapika es un panel **local** para coordinar tareas entre las CLI nativas de Codex, GitHub Copilot y OpenCode. Conserva las sesiones de cada cliente, muestra su salida, permite detener ejecuciones y pasar resultados como contexto a otro agente. Antigravity se integra mediante entrega manual de tareas y resultados. El nombre aporta identidad visual; el programa no adopta una personalidad.
+
+## Iniciar el panel
+
+Requiere Node.js 20 o posterior. El servidor y la interfaz no tienen dependencias de npm.
+
+```sh
+cd Kurapika
+KURAPIKA_WORKSPACE=/ruta/al/proyecto npm start
+```
+
+Abre `http://127.0.0.1:4173`. Si omites `KURAPIKA_WORKSPACE`, el proyecto activo será este repositorio. Puedes cambiar el puerto con `KURAPIKA_PORT`. El servicio escucha solo en `127.0.0.1`; sus tareas y transcripciones se guardan en `.kurapika/`, ignorado por Git.
+
+La interfaz permite elegir agente y modo **solo lectura** o **puede editar**, enviar tareas, ver la salida mientras trabajan, continuar el hilo nativo cuando se dispone de su ID, detener el proceso y usar la respuesta como contexto de otra tarea. Una tarea activa por agente evita que dos mensajes compitan por la misma sesión; solo una tarea de edición puede estar en curso en el proyecto a la vez. La ejecución es local: cada CLI conserva su propia autenticación.
+
+| Agente | Comando usado | Preparación |
+| --- | --- | --- |
+| Codex | `codex exec` y `codex exec resume` | Iniciar sesión con ChatGPT en Codex CLI. |
+| Copilot | `copilot -p --model auto` con ID de sesión | Iniciar sesión en Copilot CLI y confiar en el directorio de trabajo. Su plan Student permite Auto. |
+| OpenCode | `opencode run` con ID de sesión cuando lo devuelve | Configurar los modelos gratuitos disponibles en su CLI. |
+| Antigravity | Sin proceso automatizado | Copiar la tarea al cliente oficial y registrar manualmente el resultado. |
+
+Las CLI deben estar instaladas en `PATH` y autenticadas previamente en sus clientes oficiales. El panel muestra las integraciones configuradas, no comprueba la autenticación hasta ejecutar una tarea. La sesión de Codex CLI no autentica automáticamente OpenCode. El OpenCode instalado en esta máquina es V1.14.41; el perfil opcional de [ChatGPT Plus + OpenCode gratuito](profiles/README.md) requiere V2, pero el panel puede llamar a la CLI V1 existente.
+
+Codex ejecuta cada turno con el sandbox elegido y sin solicitudes de aprobación interactivas. Copilot requiere `--allow-all-tools` en modo no interactivo: en solo lectura recibe únicamente herramientas de inspección; en edición usa `--assisted-approval`, con la verificación de rutas propia de Copilot. Si necesitas revisar cada permiso en persona, usa la CLI oficial directamente. OpenCode usa sus agentes `plan` y `build`; verifica los permisos de tu instalación antes de asignarle trabajo de edición.
+
+La consola del panel transmite la salida de cada tarea y reanuda la sesión nativa entre tareas. No es una terminal PTY: no admite teclear dentro de una ejecución en curso. Para enviar otra instrucción, espera que termine el turno y asígnala al mismo agente.
+
+Ver [arquitectura de sesiones nativas](docs/ecosistema-nativo.md) para el diseño y [análisis del fork](docs/analisis-adaptacion.md) para el contexto del proyecto original. Ejecuta `npm test` para validar las reglas de despacho.
+
+## Referencia heredada del proyecto original
+
+El contenido a continuación documenta la configuración de agentes de OpenCode V2 del fork original. Es una opción independiente del panel local de Kurapika.
 
 A delegation-based engineering workflow for **OpenCode V2**: one orchestrator agent owns scope, routing, verification, and delivery, while specialists with varying tool access handle exploration, implementation, review, testing, architecture, and UI/UX.
 
