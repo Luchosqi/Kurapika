@@ -9,8 +9,12 @@ Requiere Linux, Python 3, Node.js 20 o posterior, npm, un entorno gráfico y las
 ```sh
 cd Kurapika
 npm install
-npm start
+npm run dev
 ```
+
+`npm start` abre la misma aplicación. Si npm instaló el paquete de Electron pero su binario no se descargó, ejecuta `npm run repair:electron` y luego `npm run dev`. El reparador descarga el binario oficial de la versión fijada y comprueba su SHA-256 con los checksums incluidos en el paquete. También puedes usar `pnpm dev` si ya tienes instaladas las dependencias; cambiar de gestor no evita la descarga del binario.
+
+En Linux, si `npm run dev` falla con `No usable sandbox` o con el auxiliar `chrome-sandbox`, prueba `npm run dev:compat`. Este comando desactiva el sandbox de Chromium y fuerza X11; úsalo solo en tu entorno local de desarrollo.
 
 No se inicia ningún servidor HTTP. La ventana Electron usa aislamiento de contexto y un puente IPC con operaciones concretas. La primera pestaña, **Orquestador**, siempre permanece abierta. El botón `+` crea más sesiones, incluso varias de la misma CLI. Cada pestaña conserva su proceso y pantalla al cambiar de pestaña; al cerrar una sesión activa, la aplicación pide confirmación. El emulador xterm recibe teclas, colores ANSI y cambios de tamaño a través de una PTY local. Las terminales se detienen al cerrar la aplicación.
 
@@ -34,7 +38,7 @@ El selector **Agente** permite enviar una tarea a cualquiera de los 12 roles her
 
 En **Archivos** puedes editar las instrucciones Markdown de cada rol. Kurapika guarda una copia personal en el directorio de datos de Electron, mantiene el original del fork y respalda la versión personal anterior como `.bak`. Guardar o restaurar inicia una sesión nueva para ese rol.
 
-**Estado actual:** interfaz, terminales PTY, roles, asignaciones, catálogos, edición de prompts y motor del flujo están implementados y tienen pruebas con CLIs simuladas. Falta validar una ejecución real contra las cuentas del usuario y revisar la interfaz renderizada en Electron. En este entorno `npm install` no pudo resolver `registry.npmjs.org`, por lo que Electron no se inició aquí. Ejecuta `npm test` para comprobar el motor y la configuración. Véase [análisis del brief](docs/brief-kurapika.md) para los hitos y límites.
+**Estado actual:** interfaz, terminales PTY, roles, asignaciones, catálogos, edición de prompts y motor del flujo están implementados y tienen pruebas con CLIs simuladas. Falta validar una ejecución real contra las cuentas del usuario y revisar la interfaz renderizada en Electron. El binario de Electron se verificó con SHA-256 y `dev:compat` mantuvo el proceso abierto en este entorno, pero el aislamiento del ejecutor impidió inspeccionar su ventana. Ejecuta `npm test` para comprobar el motor y la configuración. Véase [análisis del brief](docs/brief-kurapika.md) para los hitos y límites.
 
 La ilustración de fondo se preparó a partir de la referencia visual entregada por el usuario. El emulador incluido es `@xterm/xterm` 5.6.0-beta.143 bajo licencia MIT; su aviso está en `public/vendor/xterm/LICENSE`.
 

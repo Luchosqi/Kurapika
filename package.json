@@ -5,7 +5,10 @@
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
+    "dev": "electron .",
+    "dev:compat": "electron . --no-sandbox --disable-gpu --ozone-platform=x11",
     "start": "electron .",
+    "repair:electron": "bash scripts/repair-electron.sh",
     "test": "node --test"
   },
   "devDependencies": {

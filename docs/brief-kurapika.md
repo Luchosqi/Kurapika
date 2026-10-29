@@ -25,7 +25,7 @@ Referencia recibida: `BRIEF_CODEX_CHAIN_ORCHESTRATOR.md` y captura `CHAIN_ORCHES
 2. Confirmar con una inferencia real los modelos de cada cuenta. La vista Modelos ya consulta OpenCode y el catálogo de Codex cuando su app-server responde; Copilot Student solo muestra Auto.
 3. Validar el flujo coordinado con las cuentas reales. El harness actual crea un plan JSON de hasta seis pasos, ejecuta roles en orden y detiene el flujo ante fallos. Aún no aísla ediciones mediante worktrees; solo permite una edición activa.
 4. Validar autenticación y comportamiento TUI de Codex, Copilot y OpenCode con las cuentas del usuario en una sesión gráfica real. Las pruebas actuales emplean CLIs falsas y no equivalen a una ejecución autenticada.
-5. Revisar el emulador incluido contra una versión estable de xterm en una instalación con acceso a npm y realizar QA de Electron nativo; este entorno bloqueó la instalación y el arranque gráfico de Electron.
+5. Revisar el emulador incluido contra una versión estable de xterm y realizar QA visual de Electron nativo; el binario ya pudo instalarse, pero el aislamiento de este ejecutor impide inspeccionar la ventana.
 
 ## Decisiones de arquitectura
 
