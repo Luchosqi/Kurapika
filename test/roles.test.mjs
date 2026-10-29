@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { KurapikaEngine } from '../app/engine.mjs';
-import { ROLE_DEFINITIONS, RoleConfigStore, roleInstruction, validateRoleImage } from '../app/roles.mjs';
+import { ROLE_DEFINITIONS, RoleConfigStore, PromptStore, roleInstruction, validateRoleImage } from '../app/roles.mjs';
 import { buildCommand } from '../app/commands.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -51,6 +51,20 @@ test('control visual exige una captura y la entrega a Codex', () => {
   const command = buildCommand({ provider: 'codex', mode: 'inspect', prompt: 'Revisa',
     workspace: directory, imagePath: image });
   assert.deepEqual(command.args.slice(command.args.indexOf('-i'), command.args.indexOf('-i') + 2), ['-i', image]);
+});
+
+test('las instrucciones personales conservan el original y una copia anterior', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kurapika-prompts-'));
+  const store = new PromptStore(directory, path.join(root, 'agents'));
+  const original = store.get('architect');
+  assert.equal(original.customized, false);
+  store.save('architect', 'Primera versión');
+  store.save('architect', 'Segunda versión');
+  assert.equal(store.get('architect').text, 'Segunda versión');
+  assert.equal(fs.readFileSync(path.join(directory, 'architect.md.bak'), 'utf8').trim(), 'Primera versión');
+  assert.equal(store.reset('architect').text, original.text);
+  assert.equal(fs.readFileSync(path.join(directory, 'architect.md.bak'), 'utf8').trim(), 'Segunda versión');
+  assert.match(roleInstruction('orchestrator', path.join(root, 'agents'), directory), /no puedes lanzar directamente/);
 });
 
 test('cada rol conserva su propia salida y el bloqueo de edición', async () => {

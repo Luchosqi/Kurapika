@@ -13,6 +13,7 @@ let terminals = [];
 let chains;
 let roles = [];
 let imagePath = null;
+let promptSelectedRole = 'orchestrator';
 let activeTab = 'orchestrator';
 let activeView = 'terminales';
 const manualTabs = [];
@@ -350,7 +351,44 @@ function renderDrawer() {
       const item = node('li'); item.append(node('strong', '', role.label), node('small', '', `${role.provider} · ${role.model} · ${role.effort}`)); list.append(item);
     }
   } else if (activeView === 'archivos') {
-    body.append(node('p', 'drawer-note', 'La edición segura de instrucciones Markdown está pendiente. Los archivos originales están en la carpeta agents/ del repositorio.'));
+    body.append(node('p', 'drawer-note', 'Edita una copia personal del prompt. Los archivos del fork permanecen intactos; al guardar se inicia una nueva sesión para ese rol.'));
+    const select = node('select', 'prompt-role'); select.setAttribute('aria-label', 'Agente cuyas instrucciones se editan');
+    for (const role of roles) select.append(new Option(role.label, role.id));
+    select.value = promptSelectedRole;
+    const status = node('p', 'drawer-note', 'Cargando instrucciones…');
+    const editor = node('textarea', 'prompt-editor'); editor.setAttribute('aria-label', 'Instrucciones Markdown');
+    editor.maxLength = 24000; editor.spellcheck = false;
+    const actions = node('div', 'prompt-actions');
+    const save = node('button', '', 'Guardar copia personal'); save.type = 'button';
+    const restore = node('button', '', 'Restaurar original'); restore.type = 'button';
+    actions.append(save, restore); body.append(select, status, editor, actions);
+    const loadPrompt = async () => {
+      const roleId = select.value; promptSelectedRole = roleId;
+      try {
+        const prompt = await window.kurapika.getPrompt(roleId);
+        if (select.value !== roleId || !editor.isConnected) return;
+        editor.value = prompt.text;
+        status.textContent = prompt.customized ? 'Copia personal activa.' : 'Instrucciones originales del fork.';
+        restore.disabled = !prompt.customized;
+      } catch (error) { status.textContent = error.message; }
+    };
+    select.addEventListener('change', loadPrompt);
+    save.addEventListener('click', async () => {
+      try {
+        const prompt = await window.kurapika.savePrompt(select.value, editor.value);
+        status.textContent = 'Copia personal guardada; sesión del agente reiniciada.';
+        restore.disabled = !prompt.customized;
+        notice('Instrucciones guardadas.');
+      } catch (error) { notice(error.message, true); }
+    });
+    restore.addEventListener('click', async () => {
+      try {
+        const prompt = await window.kurapika.resetPrompt(select.value);
+        editor.value = prompt.text; status.textContent = 'Instrucciones originales restauradas; copia anterior respaldada.';
+        restore.disabled = true; notice('Instrucciones originales restauradas.');
+      } catch (error) { notice(error.message, true); }
+    });
+    loadPrompt();
   } else if (activeView === 'herramientas') {
     body.append(node('p', 'drawer-note', 'Estado de los ejecutores locales. La autenticación se comprueba al iniciar cada CLI.'));
     const list = node('ul', 'drawer-list'); body.append(list);

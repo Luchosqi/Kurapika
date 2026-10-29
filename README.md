@@ -32,7 +32,9 @@ El selector **Agente** permite enviar una tarea a cualquiera de los 12 roles her
 
 **Flujo coordinado** usa Codex para producir un plan JSON de hasta seis pasos. Kurapika valida los roles, ejecuta cada paso en orden, pasa un resumen de resultados al siguiente y se detiene si un paso falla. Los roles de edición no corren simultáneamente. La revisión visual requiere una captura y se lanza por separado. Antigravity permanece como entrega manual en su aplicación oficial.
 
-**Estado actual:** interfaz, terminales PTY, roles, asignaciones, catálogos y motor del flujo están implementados y tienen pruebas con CLIs simuladas. Falta validar una ejecución real contra las cuentas del usuario y revisar la interfaz renderizada en Electron. La edición de Markdown desde la app sigue pendiente. En este entorno `npm install` no pudo resolver `registry.npmjs.org`, por lo que Electron no se inició aquí. Ejecuta `npm test` para comprobar el motor y la configuración. Véase [análisis del brief](docs/brief-kurapika.md) para los hitos y límites.
+En **Archivos** puedes editar las instrucciones Markdown de cada rol. Kurapika guarda una copia personal en el directorio de datos de Electron, mantiene el original del fork y respalda la versión personal anterior como `.bak`. Guardar o restaurar inicia una sesión nueva para ese rol.
+
+**Estado actual:** interfaz, terminales PTY, roles, asignaciones, catálogos, edición de prompts y motor del flujo están implementados y tienen pruebas con CLIs simuladas. Falta validar una ejecución real contra las cuentas del usuario y revisar la interfaz renderizada en Electron. En este entorno `npm install` no pudo resolver `registry.npmjs.org`, por lo que Electron no se inició aquí. Ejecuta `npm test` para comprobar el motor y la configuración. Véase [análisis del brief](docs/brief-kurapika.md) para los hitos y límites.
 
 La ilustración de fondo se preparó a partir de la referencia visual entregada por el usuario. El emulador incluido es `@xterm/xterm` 5.6.0-beta.143 bajo licencia MIT; su aviso está en `public/vendor/xterm/LICENSE`.
 

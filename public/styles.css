@@ -431,6 +431,11 @@ color:#8aa9c8}
 .image-row button,.catalog-refresh{border:1px solid var(--line);border-radius:5px;background:rgba(20,67,119,.7);color:#c6e6ff;padding:6px 9px}
 .catalog-refresh{margin-bottom:15px}
 .catalog-results{max-height:260px;overflow:auto;margin-bottom:20px;border-bottom:1px solid var(--line)}
+.prompt-role,.prompt-editor{width:100%;border:1px solid var(--line);border-radius:6px;background:rgba(9,29,58,.88);color:var(--ink)}
+.prompt-role{height:34px;padding:0 8px}
+.prompt-editor{min-height:300px;resize:vertical;padding:12px;font:12px/1.55 ui-monospace,monospace}
+.prompt-actions{display:flex;gap:9px;margin-top:10px}
+.prompt-actions button{border:1px solid var(--line);border-radius:5px;background:rgba(20,67,119,.7);color:#c6e6ff;padding:8px 10px}
 .task-actions{
 display:flex;
 align-items:center;

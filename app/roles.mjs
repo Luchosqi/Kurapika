@@ -69,14 +69,63 @@ export class RoleConfigStore {
   }
 }
 
-export function roleInstruction(roleId, agentsDirectory) {
+export function roleInstruction(roleId, agentsDirectory, overridesDirectory = null, runtimeNote = true) {
   if (!ROLE_IDS.has(roleId)) throw new Error('Agente desconocido.');
-  if (BUILTIN_INSTRUCTIONS[roleId]) return BUILTIN_INSTRUCTIONS[roleId];
-  const source = fs.readFileSync(path.join(agentsDirectory, `${roleId}.md`), 'utf8');
-  const instruction = source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim();
-  return roleId === 'orchestrator'
+  let instruction = null;
+  if (overridesDirectory) {
+    try {
+      const override = fs.readFileSync(path.join(overridesDirectory, `${roleId}.md`), 'utf8').trim();
+      if (override) instruction = override;
+    } catch { /* Sin versión personal. */ }
+  }
+  if (!instruction) {
+    if (BUILTIN_INSTRUCTIONS[roleId]) instruction = BUILTIN_INSTRUCTIONS[roleId];
+    else {
+      const source = fs.readFileSync(path.join(agentsDirectory, `${roleId}.md`), 'utf8');
+      instruction = source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim();
+    }
+  }
+  return runtimeNote && roleId === 'orchestrator'
     ? `En esta sesión CLI no puedes lanzar directamente roles de Kurapika. No afirmes que delegaste una tarea si Kurapika no la ejecutó. Cuando te pidan un plan, entrega tareas concretas para que Kurapika las despache.\n\n${instruction}`
     : instruction;
+}
+
+export class PromptStore {
+  constructor(directory, agentsDirectory) {
+    this.directory = directory;
+    this.agentsDirectory = agentsDirectory;
+    fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  }
+
+  get(roleId) {
+    if (!ROLE_IDS.has(roleId)) throw new Error('Agente desconocido.');
+    const file = path.join(this.directory, `${roleId}.md`);
+    let customized = false;
+    try { customized = fs.statSync(file).isFile(); } catch { /* Original. */ }
+    return { roleId, customized, text: roleInstruction(roleId, this.agentsDirectory, this.directory, false) };
+  }
+
+  save(roleId, text) {
+    if (!ROLE_IDS.has(roleId)) throw new Error('Agente desconocido.');
+    if (typeof text !== 'string' || !text.trim() || text.length > 24000) {
+      throw new Error('Escribe instrucciones de 1 a 24000 caracteres.');
+    }
+    const file = path.join(this.directory, `${roleId}.md`);
+    const temporary = `${file}.tmp`;
+    fs.writeFileSync(temporary, `${text.trim()}\n`, { mode: 0o600 });
+    try { fs.copyFileSync(file, `${file}.bak`); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+    fs.renameSync(temporary, file);
+    return this.get(roleId);
+  }
+
+  reset(roleId) {
+    if (!ROLE_IDS.has(roleId)) throw new Error('Agente desconocido.');
+    const file = path.join(this.directory, `${roleId}.md`);
+    try { fs.renameSync(file, `${file}.bak`); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+    return this.get(roleId);
+  }
 }
 
 export function validateRoleImage(roleId, file) {

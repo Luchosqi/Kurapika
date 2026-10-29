@@ -21,7 +21,7 @@ Referencia recibida: `BRIEF_CODEX_CHAIN_ORCHESTRATOR.md` y captura `CHAIN_ORCHES
 
 ## Pendiente
 
-1. Editar con seguridad los prompts Markdown, permisos y herramientas desde la aplicación. El registro de los 12 roles, sus asignaciones y el historial por rol ya funcionan en el motor.
+1. Configurar permisos y herramientas por rol desde la aplicación. El registro de los 12 roles, sus asignaciones, historial y edición de copias personales de los prompts Markdown ya funcionan en el motor.
 2. Confirmar con una inferencia real los modelos de cada cuenta. La vista Modelos ya consulta OpenCode y el catálogo de Codex cuando su app-server responde; Copilot Student solo muestra Auto.
 3. Validar el flujo coordinado con las cuentas reales. El harness actual crea un plan JSON de hasta seis pasos, ejecuta roles en orden y detiene el flujo ante fallos. Aún no aísla ediciones mediante worktrees; solo permite una edición activa.
 4. Validar autenticación y comportamiento TUI de Codex, Copilot y OpenCode con las cuentas del usuario en una sesión gráfica real. Las pruebas actuales emplean CLIs falsas y no equivalen a una ejecución autenticada.

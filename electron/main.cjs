@@ -25,6 +25,7 @@ let engine;
 let terminals;
 let chains;
 let roles;
+let prompts;
 let checkExecutor;
 
 function isAppPage(value) {
@@ -90,16 +91,17 @@ app.whenReady().then(async () => {
     return net.fetch(pathToFileURL(path.join(ROOT, 'public', asset)).toString());
   });
 
-  const [{ KurapikaEngine }, { TerminalManager }, { ChainConfigStore }, { RoleConfigStore }, { listModels }, executors] = await Promise.all([
+  const [{ KurapikaEngine }, { TerminalManager }, { ChainConfigStore }, { RoleConfigStore, PromptStore }, { listModels }, executors] = await Promise.all([
     import('../app/engine.mjs'), import('../app/terminal.mjs'), import('../app/config.mjs'), import('../app/roles.mjs'), import('../app/models.mjs'), import('../app/executors.mjs'),
   ]);
   checkExecutor = executors.checkExecutor;
   const settingsFile = path.join(app.getPath('userData'), 'settings.json');
   chains = new ChainConfigStore(path.join(app.getPath('userData'), 'chains.json'));
   roles = new RoleConfigStore(path.join(app.getPath('userData'), 'roles.json'));
+  prompts = new PromptStore(path.join(app.getPath('userData'), 'prompts'), path.join(ROOT, 'agents'));
   const stateDir = process.env.KURAPIKA_STATE_DIR || path.join(app.getPath('userData'), 'sessions');
   engine = new KurapikaEngine({ workspace: loadPreferredWorkspace(settingsFile), stateDir,
-    roleStore: roles, agentsDirectory: path.join(ROOT, 'agents') });
+    roleStore: roles, agentsDirectory: path.join(ROOT, 'agents'), promptsDirectory: prompts.directory });
   terminals = new TerminalManager({
     workspace: engine.workspace,
     editing: () => (engine.state.workflow && ['planning', 'running', 'stopping'].includes(engine.state.workflow.status)) ||
@@ -123,6 +125,18 @@ app.whenReady().then(async () => {
   handle('kurapika:reset', provider => engine.reset(provider));
   handle('kurapika:record-result', result => engine.recordResult(result));
   handle('kurapika:get-roles', () => roles.get());
+  handle('kurapika:get-prompt', roleId => prompts.get(roleId));
+  function editPrompt(roleId, text, restore = false) {
+    if (engine.state.workflow && ['planning', 'running', 'stopping'].includes(engine.state.workflow.status)) {
+      throw new Error('Espera a que termine el flujo coordinado para editar instrucciones.');
+    }
+    if (engine.running.has(`role:${roleId}`)) throw new Error('Detén este agente antes de editar sus instrucciones.');
+    const result = restore ? prompts.reset(roleId) : prompts.save(roleId, text);
+    engine.resetRole(roleId);
+    return result;
+  }
+  handle('kurapika:save-prompt', (roleId, text) => editPrompt(roleId, text));
+  handle('kurapika:reset-prompt', roleId => editPrompt(roleId, '', true));
   handle('kurapika:list-models', provider => listModels(provider));
   handle('kurapika:choose-screenshot', async () => {
     const choice = await dialog.showOpenDialog(window, {

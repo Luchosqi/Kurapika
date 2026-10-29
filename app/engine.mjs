@@ -21,12 +21,13 @@ function resolveWorkspace(directory) {
 }
 
 export class KurapikaEngine extends EventEmitter {
-  constructor({ workspace, stateDir, roleStore, agentsDirectory, spawnProcess = spawn }) {
+  constructor({ workspace, stateDir, roleStore, agentsDirectory, promptsDirectory, spawnProcess = spawn }) {
     super();
     this.baseStateDir = path.resolve(stateDir);
     this.spawnProcess = spawnProcess;
     this.roleStore = roleStore || new RoleConfigStore(path.join(stateDir, 'roles.json'));
     this.agentsDirectory = agentsDirectory || path.resolve('agents');
+    this.promptsDirectory = promptsDirectory || null;
     this.running = new Map();
     this.workflowCancelled = false;
     this.terminals = null;
@@ -181,7 +182,7 @@ export class KurapikaEngine extends EventEmitter {
     if (agent.sessionId && (agent.provider !== provider || agent.model !== model || agent.effort !== effort || agent.sessionMode !== definition.mode)) {
       throw new Error('Cambió el ejecutor o modelo. Inicia una sesión nueva para este agente.');
     }
-    const instruction = roleInstruction(roleId, this.agentsDirectory);
+    const instruction = roleInstruction(roleId, this.agentsDirectory, this.promptsDirectory);
     const spec = buildCommand({ provider, model, effort, mode: definition.mode, prompt,
       workspace: this.workspace, sessionId: agent.sessionId, roleId, instruction, imagePath,
       outputSchema: options.outputSchema, outputFile: options.outputFile });
