@@ -50,9 +50,12 @@ test('Electron carga la ventana aislada y limita el puente IPC', async () => {
   assert.equal(createdWindow.options.webPreferences.contextIsolation, true);
   assert.equal(createdWindow.options.webPreferences.nodeIntegration, false);
   assert.equal(createdWindow.options.webPreferences.sandbox, true);
+  assert.equal(createdWindow.options.frame, false);
   assert.match(createdWindow.options.webPreferences.preload, /preload\.cjs$/);
   const allowed = await protocolHandler({ url: 'kurapika://app/styles.css' });
   assert.match(allowed.url, /public\/styles\.css$/);
+  const art = await protocolHandler({ url: 'kurapika://app/assets/kurapika-background.webp' });
+  assert.match(art.url, /public\/assets\/kurapika-background\.webp$/);
   const denied = await protocolHandler({ url: 'kurapika://elsewhere/index.html' });
   assert.equal(denied.status, 404);
 
@@ -60,8 +63,15 @@ test('Electron carga la ventana aislada y limita el puente IPC', async () => {
   const state = channels.get('kurapika:get-state')(event);
   assert.ok(state.agents.codex);
   const terminals = channels.get('kurapika:get-terminals')(event);
-  assert.equal(terminals.codex.status, 'idle');
-  assert.equal(terminals.copilot.status, 'idle');
+  assert.deepEqual(terminals, []);
+  const chains = channels.get('kurapika:get-chains')(event);
+  assert.equal(chains.slots.length, 5);
+  const changed = channels.get('kurapika:assign-chain')(event, 4, 'codex', 'Extra');
+  assert.equal(changed.slots[4].label, 'Extra');
+  const templates = channels.get('kurapika:get-agent-templates')(event);
+  assert.ok(templates.some(item => item.id === 'orchestrator'));
+  const unavailable = channels.get('kurapika:check-executor')(event, 'claude');
+  assert.equal(unavailable.supported, false);
   assert.throws(() => channels.get('kurapika:get-state')({ sender: {} }), /no autorizada/);
   assert.throws(() => channels.get('kurapika:start-terminal')({ sender: {} }, 'codex', 'inspect'), /no autorizada/);
 });

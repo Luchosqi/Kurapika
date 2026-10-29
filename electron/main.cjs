@@ -9,6 +9,10 @@ const ASSETS = new Map([
   ['/index.html', 'index.html'],
   ['/app.js', 'app.js'],
   ['/styles.css', 'styles.css'],
+  ['/assets/kurapika-background.webp', 'assets/kurapika-background.webp'],
+  ['/assets/chain-link.svg', 'assets/chain-link.svg'],
+  ['/vendor/xterm/xterm.js', 'vendor/xterm/xterm.js'],
+  ['/vendor/xterm/xterm.css', 'vendor/xterm/xterm.css'],
 ]);
 
 protocol.registerSchemesAsPrivileged([{
@@ -19,6 +23,8 @@ protocol.registerSchemesAsPrivileged([{
 let window;
 let engine;
 let terminals;
+let chains;
+let checkExecutor;
 
 function isAppPage(value) {
   try {
@@ -53,12 +59,13 @@ function loadPreferredWorkspace(settingsFile) {
 
 function createWindow() {
   window = new BrowserWindow({
-    width: 1480,
-    height: 940,
+    width: 1600,
+    height: 900,
     minWidth: 900,
-    minHeight: 660,
-    backgroundColor: '#101217',
-    title: 'Kurapika',
+    minHeight: 620,
+    backgroundColor: '#041021',
+    title: 'Chain Orchestrator',
+    frame: false,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -82,15 +89,16 @@ app.whenReady().then(async () => {
     return net.fetch(pathToFileURL(path.join(ROOT, 'public', asset)).toString());
   });
 
-  const [{ KurapikaEngine }, { TerminalManager }] = await Promise.all([
-    import('../app/engine.mjs'), import('../app/terminal.mjs'),
+  const [{ KurapikaEngine }, { TerminalManager }, { ChainConfigStore }, executors] = await Promise.all([
+    import('../app/engine.mjs'), import('../app/terminal.mjs'), import('../app/config.mjs'), import('../app/executors.mjs'),
   ]);
+  checkExecutor = executors.checkExecutor;
   const settingsFile = path.join(app.getPath('userData'), 'settings.json');
+  chains = new ChainConfigStore(path.join(app.getPath('userData'), 'chains.json'));
   const stateDir = process.env.KURAPIKA_STATE_DIR || path.join(app.getPath('userData'), 'sessions');
   engine = new KurapikaEngine({ workspace: loadPreferredWorkspace(settingsFile), stateDir });
   terminals = new TerminalManager({
     workspace: engine.workspace,
-    busy: provider => engine.running.has(provider),
     editing: () => Object.values(engine.state.agents).some(agent =>
       agent.mode === 'edit' && (agent.status === 'running' || agent.status === 'stopping')),
   });
@@ -101,16 +109,50 @@ app.whenReady().then(async () => {
   terminals.on('state', state => {
     if (window && !window.isDestroyed()) window.webContents.send('kurapika:terminals', state);
   });
+  terminals.on('data', event => {
+    if (window && !window.isDestroyed()) window.webContents.send('kurapika:terminal-data', event);
+  });
 
   handle('kurapika:get-state', () => engine.getState());
   handle('kurapika:send-task', task => engine.sendTask(task));
   handle('kurapika:stop', provider => engine.stop(provider));
   handle('kurapika:reset', provider => engine.reset(provider));
   handle('kurapika:record-result', result => engine.recordResult(result));
+  handle('kurapika:get-agent-templates', () => fs.readdirSync(path.join(ROOT, 'agents'), { withFileTypes: true })
+    .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
+    .map(entry => ({ id: entry.name.slice(0, -3), file: `agents/${entry.name}` })));
+  handle('kurapika:window-minimize', () => window.minimize());
+  handle('kurapika:window-maximize', () => window.isMaximized() ? window.unmaximize() : window.maximize());
+  handle('kurapika:window-close', () => window.close());
+  handle('kurapika:get-chains', () => chains.get());
+  handle('kurapika:assign-chain', (index, provider, label) => chains.assign(index, provider, label));
+  handle('kurapika:swap-chains', (first, second) => chains.swap(first, second));
+  handle('kurapika:check-executor', provider => checkExecutor(provider));
   handle('kurapika:get-terminals', () => terminals.getState());
-  handle('kurapika:start-terminal', (provider, mode) => terminals.start(provider, mode));
-  handle('kurapika:send-terminal', (provider, input) => terminals.send(provider, input));
-  handle('kurapika:stop-terminal', provider => terminals.stop(provider));
+  handle('kurapika:get-terminal-replay', id => terminals.getReplay(id));
+  handle('kurapika:start-terminal', (provider, mode, size) => {
+    const available = checkExecutor(provider);
+    if (!available.installed || !available.supported) throw new Error(available.reason);
+    return terminals.start(provider, mode, size);
+  });
+  handle('kurapika:send-terminal', (id, input) => terminals.send(id, input));
+  handle('kurapika:resize-terminal', (id, size) => terminals.resize(id, size));
+  handle('kurapika:stop-terminal', id => terminals.stop(id));
+  handle('kurapika:close-terminal', async id => {
+    const session = terminals.getState().find(item => item.id === id);
+    if (!session) throw new Error('Terminal desconocida.');
+    const active = session.status === 'starting' || session.status === 'running' || session.status === 'stopping';
+    if (active) {
+      const choice = await dialog.showMessageBox(window, {
+        type: 'warning', buttons: ['Cancelar', 'Cerrar terminal'], defaultId: 0, cancelId: 0,
+        message: 'La terminal sigue activa',
+        detail: 'Cerrar esta pestaña detendrá su proceso y la tarea que esté ejecutando.',
+      });
+      if (choice.response !== 1) return false;
+    }
+    terminals.close(id, active);
+    return true;
+  });
   handle('kurapika:choose-workspace', async () => {
     const choice = await dialog.showOpenDialog(window, {
       title: 'Seleccionar proyecto',

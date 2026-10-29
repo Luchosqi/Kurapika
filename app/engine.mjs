@@ -86,7 +86,6 @@ export class KurapikaEngine extends EventEmitter {
     const task = validateTask(input);
     const agent = this.state.agents[task.provider];
     if (agent.status === 'running' || agent.status === 'stopping') throw new Error('El agente ya está ejecutando una tarea.');
-    if (this.terminals?.isRunning(task.provider)) throw new Error('Cierra la terminal de esta CLI antes de enviarle una tarea.');
     if (agent.status === 'handoff') throw new Error('Registra el resultado manual o inicia una sesión nueva.');
     if (task.mode === 'edit' && Object.values(this.state.agents).some(other =>
       other.mode === 'edit' && (other.status === 'running' || other.status === 'stopping'))) {

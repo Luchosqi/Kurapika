@@ -3,140 +3,71 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#101217">
-  <meta name="description" content="Kurapika: control local de agentes y sesiones CLI.">
+  <meta name="theme-color" content="#031126">
+  <meta name="description" content="Chain Orchestrator: sesiones CLI y agentes en una aplicación de escritorio.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <title>Kurapika · Centro de agentes</title>
+  <title>Chain Orchestrator · Kurapika</title>
+  <link rel="stylesheet" href="vendor/xterm/xterm.css">
   <link rel="stylesheet" href="styles.css">
+  <script src="vendor/xterm/xterm.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Ir al contenido</a>
-  <header class="topbar">
-    <div class="brand" aria-label="Kurapika">
-      <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
-      <span class="brand-name">KURAPIKA</span>
-      <span class="brand-divider"></span>
-      <span class="brand-subtitle">Centro de agentes</span>
-    </div>
-    <div class="topbar-right">
-      <span class="connection"><span class="connection-dot"></span><span id="connection-label">Conectando</span></span>
-      <span class="local-badge">LOCAL</span>
-    </div>
-  </header>
-
-  <main id="main" class="shell">
-    <section class="intro" aria-labelledby="page-title">
-      <div>
-        <p class="eyebrow">CONTROL DE SESIONES / 01</p>
-        <h1 id="page-title">Un lugar para coordinar el trabajo.</h1>
-        <p class="intro-copy">Asigna tareas, observa cada CLI y conversa en terminales abiertas desde este equipo.</p>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="identity"><span class="identity-mark" aria-hidden="true">♧</span><span>CHAIN ORCHESTRATOR</span></div>
+      <nav class="main-nav" aria-label="Navegación principal">
+        <button class="nav-item active" data-view="terminales" type="button" aria-current="page"><span aria-hidden="true">▣</span> Terminales</button>
+        <button class="nav-item" data-view="agentes" type="button"><span aria-hidden="true">♙</span> Agentes</button>
+        <button class="nav-item" data-view="modelos" type="button"><span aria-hidden="true">◇</span> Modelos</button>
+        <button class="nav-item" data-view="archivos" type="button"><span aria-hidden="true">▤</span> Archivos</button>
+        <button class="nav-item" data-view="herramientas" type="button"><span aria-hidden="true">⌁</span> Herramientas</button>
+        <button class="nav-item" data-view="configuracion" type="button"><span aria-hidden="true">⚙</span> Configuración</button>
+      </nav>
+      <div class="window-actions" aria-label="Ventana">
+        <button id="window-minimize" type="button" aria-label="Minimizar ventana">—</button>
+        <button id="window-maximize" type="button" aria-label="Maximizar o restaurar ventana">□</button>
+        <button id="window-close" type="button" aria-label="Cerrar ventana">×</button>
       </div>
-      <div class="workspace-box">
-        <span class="workspace-label">Proyecto activo</span>
-        <code id="workspace-path">Cargando…</code>
-        <button id="choose-workspace" class="workspace-change" type="button">Cambiar proyecto</button>
-      </div>
-    </section>
+    </header>
 
-    <section class="stats" aria-label="Resumen de actividad">
-      <div class="stat"><span class="stat-label">Clientes integrados</span><strong id="stat-total">4</strong><span class="stat-foot">3 CLI + 1 entrega manual</span></div>
-      <div class="stat"><span class="stat-label">En ejecución</span><strong id="stat-running">0</strong><span class="stat-foot">Procesos activos ahora</span></div>
-      <div class="stat"><span class="stat-label">Completadas</span><strong id="stat-completed">0</strong><span class="stat-foot">Sesiones con resultado</span></div>
-      <div class="stat"><span class="stat-label">Entrega pendiente</span><strong id="stat-handoff">0</strong><span class="stat-foot">Antigravity manual</span></div>
-    </section>
+    <main id="main" class="stage">
+      <aside class="chains" aria-label="Cinco accesos a herramientas CLI">
+        <div id="chain-list" class="chain-list"></div>
+      </aside>
 
-    <div class="content-grid">
-      <div class="left-column">
-        <section class="panel composer" aria-labelledby="composer-title">
-          <div class="section-heading">
-            <div><p class="eyebrow">NUEVA TAREA</p><h2 id="composer-title">Enviar trabajo</h2></div>
-            <span class="section-index">01 / 03</span>
-          </div>
-          <form id="task-form">
-            <div class="form-row">
-              <label class="field">Agente
-                <select id="provider-select" name="provider">
-                  <option value="codex">Codex</option>
-                  <option value="copilot">Copilot</option>
-                  <option value="opencode">OpenCode</option>
-                  <option value="antigravity">Antigravity · manual</option>
-                </select>
-              </label>
-              <label class="field">Alcance
-                <select id="mode-select" name="mode">
-                  <option value="inspect">Solo lectura</option>
-                  <option value="edit">Puede editar</option>
-                </select>
-              </label>
-            </div>
-            <label class="field task-field" for="task-prompt">Instrucción</label>
-            <textarea id="task-prompt" name="prompt" rows="5" maxlength="12000" placeholder="Describe el objetivo, los archivos relevantes y cómo sabremos que terminó…" required></textarea>
-            <div class="composer-footer">
-              <p id="mode-hint">El agente inspeccionará el proyecto sin modificar archivos.</p>
-              <button class="primary-button" type="submit"><span>Iniciar tarea</span><span aria-hidden="true">↗</span></button>
-            </div>
-          </form>
-        </section>
-
-        <section class="agents-section" aria-labelledby="agents-title">
-          <div class="section-heading outside-heading">
-            <div><p class="eyebrow">EQUIPO</p><h2 id="agents-title">Agentes</h2></div>
-            <span class="section-index">02 / 03</span>
-          </div>
-          <div id="agent-grid" class="agent-grid"></div>
-        </section>
-
-        <section class="panel activity-panel" aria-labelledby="activity-title">
-          <div class="section-heading">
-            <div><p class="eyebrow">REGISTRO</p><h2 id="activity-title">Actividad reciente</h2></div>
-            <span class="section-index">03 / 03</span>
-          </div>
-          <ol id="activity-list" class="activity-list"></ol>
-        </section>
-      </div>
-
-      <section class="panel console-panel" aria-labelledby="console-title">
-        <div class="console-top">
-          <div class="console-heading"><span class="console-icon" aria-hidden="true">&gt;_</span><div><p class="eyebrow">SESIÓN ACTIVA</p><h2 id="console-title">Consola de agente</h2></div></div>
-          <span id="console-status" class="status-badge">Inactivo</span>
+      <section class="terminal-window" aria-label="Terminal central">
+        <div id="terminal-tabs" class="terminal-tabs" role="tablist" aria-label="Sesiones de terminal"></div>
+        <div class="terminal-toolbar">
+          <button id="toolbar-workspace" type="button" class="toolbar-workspace" title="Cambiar proyecto"><span aria-hidden="true">▣</span><span id="toolbar-path">Cargando proyecto…</span></button>
+          <div class="toolbar-actions"><span id="toolbar-status" class="toolbar-status">Orquestador</span><button id="toolbar-stop" type="button" title="Detener proceso" aria-label="Detener proceso actual" hidden>■</button></div>
         </div>
-        <div id="console-tabs" class="console-tabs" role="tablist" aria-label="Sesiones de agentes"></div>
-        <div class="console-view-switch" role="group" aria-label="Vista de sesión">
-          <button id="view-tasks" type="button" class="view-button active" aria-pressed="true">Tareas</button>
-          <button id="view-terminal" type="button" class="view-button" aria-pressed="false">Terminal interactiva</button>
+        <div class="terminal-body">
+          <section id="orchestrator-view" class="orchestrator-view" aria-label="Orquestador">
+            <div class="orchestrator-title"><span class="prompt-symbol" aria-hidden="true">&gt;_</span><div><h1>Orquestador</h1><p>Asigna trabajo a las CLI y sigue los resultados desde aquí.</p></div></div>
+            <form id="task-form" class="task-form">
+              <div class="task-row"><label>Ejecutor <select id="provider-select"><option value="codex">Codex</option><option value="copilot">Copilot Auto</option><option value="opencode">OpenCode</option><option value="antigravity">Antigravity · manual</option></select></label><label>Permiso <select id="mode-select"><option value="inspect">Solo lectura</option><option value="edit">Puede editar</option></select></label></div>
+              <label for="task-prompt">Tarea</label>
+              <textarea id="task-prompt" maxlength="12000" rows="4" placeholder="Describe el objetivo y cómo verificar el resultado…" required></textarea>
+              <div class="task-actions"><span id="mode-hint">El agente inspeccionará el proyecto.</span><button class="primary-button" type="submit">Enviar tarea <span aria-hidden="true">↗</span></button></div>
+            </form>
+            <div class="result-section"><div class="result-head"><label for="result-provider">Salida reciente</label><select id="result-provider"><option value="codex">Codex</option><option value="copilot">Copilot</option><option value="opencode">OpenCode</option><option value="antigravity">Antigravity</option></select><span id="result-status">Inactivo</span></div><pre id="result-output">Las respuestas aparecerán aquí.</pre><div class="result-actions"><button id="use-output" type="button" disabled>Usar como contexto</button><button id="reset-session" type="button">Nueva sesión</button><button id="stop-task" type="button" disabled>Detener tarea</button></div></div>
+            <div id="handoff-area" class="handoff-area" hidden><p id="handoff-text"></p><button id="copy-handoff" type="button">Copiar tarea</button><label for="manual-result">Resultado manual</label><textarea id="manual-result" rows="3" maxlength="12000"></textarea><button id="record-result" type="button">Registrar resultado</button></div>
+            <ol id="activity-list" class="activity-list" aria-label="Actividad reciente"></ol>
+          </section>
+          <section id="manual-tab" class="manual-tab" hidden><h1>Antigravity</h1><p>Esta integración usa entrega manual con tu plan Student. Ejecuta la tarea en la aplicación oficial y trae el resultado a Kurapika.</p><button id="manual-to-orchestrator" class="primary-button" type="button">Preparar entrega en Orquestador</button></section>
+          <div id="terminal-panes" class="terminal-panes" hidden></div>
         </div>
-        <div class="console-meta"><span id="session-label">Sin sesión iniciada</span><span id="mode-label">Solo lectura</span></div>
-        <div id="console-output" class="console-output" role="log" aria-live="polite" aria-label="Salida del agente"><p class="console-empty">Selecciona un agente y envíale una tarea para ver su salida aquí.</p></div>
-        <div id="terminal-screen" class="terminal-screen" role="log" aria-label="Pantalla de terminal" hidden><pre id="terminal-text"></pre></div>
-        <div id="terminal-controls" class="terminal-controls" hidden>
-          <p id="terminal-hint">Abre una CLI y envíale mensajes desde aquí.</p>
-          <div class="terminal-buttons">
-            <button id="start-terminal" class="secondary-button" type="button">Abrir terminal</button>
-            <button id="stop-terminal" class="danger-button" type="button" disabled>Cerrar terminal</button>
-          </div>
-          <form id="terminal-form" class="terminal-form">
-            <label for="terminal-input">Enviar a la CLI abierta</label>
-            <div><input id="terminal-input" type="text" maxlength="4000" autocomplete="off" placeholder="Escribe un mensaje o una respuesta…" disabled><button type="submit" class="secondary-button" disabled>Enviar ↵</button></div>
-          </form>
-        </div>
-        <div id="console-bottom" class="console-bottom">
-          <p id="console-task" class="console-task">Ninguna tarea en curso.</p>
-          <div class="console-actions">
-            <button id="use-output" class="text-button" type="button" disabled>Usar salida como contexto</button>
-            <button id="copy-handoff" class="text-button" type="button" hidden>Copiar tarea</button>
-            <button id="reset-session" class="text-button" type="button">Nueva sesión</button>
-            <button id="stop-session" class="danger-button" type="button" disabled>Detener</button>
-          </div>
-        </div>
-        <form id="manual-result-form" class="manual-result" hidden>
-          <label for="manual-result">Resultado de Antigravity</label>
-          <textarea id="manual-result" rows="4" maxlength="12000" placeholder="Pega aquí el resultado que obtuviste directamente en Antigravity…"></textarea>
-          <button class="secondary-button" type="submit">Registrar resultado manual</button>
-        </form>
       </section>
-    </div>
-    <p id="notice" class="notice" role="status" aria-live="polite"></p>
-  </main>
+
+      <section id="drawer" class="drawer" aria-label="Panel de gestión" hidden><div class="drawer-head"><h2 id="drawer-title">Configuración</h2><button id="drawer-close" type="button" aria-label="Cerrar panel">×</button></div><div id="drawer-body" class="drawer-body"></div></section>
+    </main>
+
+    <footer class="app-footer"><button id="footer-workspace" type="button" class="footer-workspace" title="Cambiar proyecto"><span aria-hidden="true">▱</span><span id="footer-path">Cargando proyecto…</span></button><button id="footer-agents" type="button" class="footer-agents">Agentes <span aria-hidden="true">›</span></button></footer>
+  </div>
+
+  <dialog id="new-terminal-dialog" class="session-dialog"><form method="dialog"><h2>Nueva terminal</h2><p>Inicia otra sesión independiente en el proyecto actual.</p><label for="new-provider">Herramienta</label><select id="new-provider"><option value="codex">Codex</option><option value="copilot">Copilot Auto</option><option value="opencode">OpenCode</option></select><label for="new-mode">Permiso</label><select id="new-mode"><option value="inspect">Solo lectura</option><option value="edit">Puede editar</option></select><div><button value="cancel" type="submit">Cancelar</button><button id="confirm-new-terminal" value="start" type="submit" class="primary-button">Abrir terminal</button></div></form></dialog>
+  <p id="notice" class="notice" role="status" aria-live="polite"></p>
 </body>
 </html>

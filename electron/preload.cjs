@@ -7,10 +7,21 @@ contextBridge.exposeInMainWorld('kurapika', {
   reset: provider => ipcRenderer.invoke('kurapika:reset', provider),
   recordResult: result => ipcRenderer.invoke('kurapika:record-result', result),
   chooseWorkspace: () => ipcRenderer.invoke('kurapika:choose-workspace'),
+  minimize: () => ipcRenderer.invoke('kurapika:window-minimize'),
+  maximize: () => ipcRenderer.invoke('kurapika:window-maximize'),
+  closeWindow: () => ipcRenderer.invoke('kurapika:window-close'),
+  getChains: () => ipcRenderer.invoke('kurapika:get-chains'),
+  getAgentTemplates: () => ipcRenderer.invoke('kurapika:get-agent-templates'),
+  assignChain: (index, provider, label) => ipcRenderer.invoke('kurapika:assign-chain', index, provider, label),
+  swapChains: (first, second) => ipcRenderer.invoke('kurapika:swap-chains', first, second),
+  checkExecutor: provider => ipcRenderer.invoke('kurapika:check-executor', provider),
   getTerminals: () => ipcRenderer.invoke('kurapika:get-terminals'),
-  startTerminal: (provider, mode) => ipcRenderer.invoke('kurapika:start-terminal', provider, mode),
-  sendTerminal: (provider, input) => ipcRenderer.invoke('kurapika:send-terminal', provider, input),
-  stopTerminal: provider => ipcRenderer.invoke('kurapika:stop-terminal', provider),
+  getTerminalReplay: id => ipcRenderer.invoke('kurapika:get-terminal-replay', id),
+  startTerminal: (provider, mode, size) => ipcRenderer.invoke('kurapika:start-terminal', provider, mode, size),
+  sendTerminal: (id, input) => ipcRenderer.invoke('kurapika:send-terminal', id, input),
+  resizeTerminal: (id, size) => ipcRenderer.invoke('kurapika:resize-terminal', id, size),
+  stopTerminal: id => ipcRenderer.invoke('kurapika:stop-terminal', id),
+  closeTerminal: id => ipcRenderer.invoke('kurapika:close-terminal', id),
   onState: callback => {
     if (typeof callback !== 'function') throw new TypeError('Se requiere una función.');
     const listener = (_event, state) => callback(state);
@@ -22,5 +33,11 @@ contextBridge.exposeInMainWorld('kurapika', {
     const listener = (_event, state) => callback(state);
     ipcRenderer.on('kurapika:terminals', listener);
     return () => ipcRenderer.removeListener('kurapika:terminals', listener);
+  },
+  onTerminalData: callback => {
+    if (typeof callback !== 'function') throw new TypeError('Se requiere una función.');
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('kurapika:terminal-data', listener);
+    return () => ipcRenderer.removeListener('kurapika:terminal-data', listener);
   },
 });

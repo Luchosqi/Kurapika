@@ -65,7 +65,6 @@ test('coordina bloqueos de edición y proyecto con terminales abiertas', () => {
     isRunning: provider => provider === 'codex',
   };
   try {
-    assert.throws(() => engine.sendTask({ provider: 'codex', mode: 'inspect', prompt: 'Revisar' }), /Cierra la terminal/);
     assert.throws(() => engine.sendTask({ provider: 'opencode', mode: 'edit', prompt: 'Editar' }), /edición activa/);
     assert.throws(() => engine.openWorkspace(projectB), /Cierra las terminales/);
   } finally {

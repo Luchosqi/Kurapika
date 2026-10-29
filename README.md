@@ -1,10 +1,10 @@
-# Kurapika
+# Chain Orchestrator · Kurapika
 
-Kurapika es una **aplicación de escritorio con Electron** para coordinar las CLI nativas de Codex, GitHub Copilot y OpenCode. Permite ejecutar tareas acotadas o abrir terminales interactivas dentro de la ventana. Conserva las sesiones de tareas de cada cliente, muestra su salida y permite pasar resultados como contexto a otro agente. Antigravity se integra mediante entrega manual de tareas y resultados. El nombre aporta identidad visual; el programa no adopta una personalidad.
+Aplicación de escritorio Electron para coordinar CLIs de IA. La pantalla principal sigue la referencia visual proporcionada por el usuario: cinco cadenas configurables, una terminal central con pestañas y una franja inferior mínima. Kurapika es un nombre e identidad visual; el software no adopta una personalidad.
 
-## Iniciar la aplicación
+## Ejecutar
 
-Requiere Node.js 20 o posterior, npm y un entorno gráfico. Las terminales interactivas requieren Linux con `script` de util-linux. Instala Electron una vez:
+Requiere Linux, Python 3, Node.js 20 o posterior, npm, un entorno gráfico y las CLIs que quieras utilizar instaladas en `PATH`.
 
 ```sh
 cd Kurapika
@@ -12,24 +12,23 @@ npm install
 npm start
 ```
 
-La ventana se abre directamente; Kurapika no inicia un servidor HTTP. Durante el desarrollo, el proyecto inicial es este repositorio. Usa **Cambiar proyecto** para elegir otra carpeta; la elección se recuerda para futuras aperturas. También puedes definir `KURAPIKA_WORKSPACE=/ruta/al/proyecto` al iniciar. Las sesiones y transcripciones de tareas se guardan en el directorio de datos de Electron para Kurapika, separadas por proyecto. `KURAPIKA_STATE_DIR` permite mover ese almacenamiento si lo necesitas.
+No se inicia ningún servidor HTTP. La ventana Electron usa aislamiento de contexto y un puente IPC con operaciones concretas. La primera pestaña, **Orquestador**, siempre permanece abierta. El botón `+` crea más sesiones, incluso varias de la misma CLI. Cada pestaña conserva su proceso y pantalla al cambiar de pestaña; al cerrar una sesión activa, la aplicación pide confirmación. El emulador xterm recibe teclas, colores ANSI y cambios de tamaño a través de una PTY local. Las terminales se detienen al cerrar la aplicación.
 
-La interfaz permite elegir agente y modo **solo lectura** o **puede editar**, enviar tareas, ver la salida mientras trabajan, continuar el hilo nativo cuando se dispone de su ID, detener el proceso y usar la respuesta como contexto de otra tarea. En **Terminal interactiva** puedes abrir una CLI, leer su pantalla y enviarle mensajes o respuestas sin cerrar el proceso. Se evita abrir una terminal y una tarea para la misma CLI a la vez; solo una edición puede estar activa en el proyecto. La ejecución es local: cada CLI conserva su propia autenticación.
+Las cinco cadenas son accesos reasignables desde **Configuración**. Al pulsar una cadena ya abierta, se activa su pestaña. La primera apertura comprueba si la CLI está instalada. Las asignaciones se guardan en `chains.json` dentro de los datos de usuario de Electron. El directorio de proyecto se elige desde la ruta de la barra inferior o de la terminal y se recuerda entre aperturas. `KURAPIKA_WORKSPACE` puede fijar el proyecto inicial; `KURAPIKA_STATE_DIR` cambia dónde se guardan las tareas y sus logs.
 
-| Agente | Comando usado | Preparación |
+| Integración | Terminal | Tareas del Orquestador |
 | --- | --- | --- |
-| Codex | `codex exec` y `codex exec resume` | Iniciar sesión con ChatGPT en Codex CLI. |
-| Copilot | `copilot -p --model auto` con ID de sesión | Iniciar sesión en Copilot CLI y confiar en el directorio de trabajo. Su plan Student permite Auto. |
-| OpenCode | `opencode run` con ID de sesión cuando lo devuelve | Configurar los modelos gratuitos disponibles en su CLI. |
-| Antigravity | Sin proceso automatizado | Copiar la tarea al cliente oficial y registrar manualmente el resultado. |
+| Codex | CLI interactiva con sandbox de lectura o edición | `codex exec` y reanudación por ID |
+| Copilot | CLI interactiva con modelo `auto` | `copilot -p --model auto` |
+| OpenCode | CLI interactiva con agentes `plan` o `build` | `opencode run` |
+| Antigravity Student | Pestaña de entrega manual, sin proceso automatizado | Tarea y resultado manuales |
+| Claude Code | Slot configurable; adaptador pendiente | Pendiente |
 
-Las CLI deben estar instaladas en `PATH` y autenticadas previamente en sus clientes oficiales. El panel muestra las integraciones configuradas, no comprueba la autenticación hasta ejecutar una tarea. La sesión de Codex CLI no autentica automáticamente OpenCode. El OpenCode instalado en esta máquina es V1.14.41; el perfil opcional de [ChatGPT Plus + OpenCode gratuito](profiles/README.md) requiere V2, pero el panel puede llamar a la CLI V1 existente.
+Cada CLI conserva su autenticación propia. El inicio de una terminal comprueba instalación, pero los fallos de autenticación se muestran cuando la CLI arranca. El Orquestador conserva el envío de tareas por turno, su salida y el paso manual de resultados como contexto. Solo una tarea o terminal con permiso de edición puede estar activa en el proyecto a la vez; cambiar de proyecto requiere cerrar procesos activos.
 
-Codex ejecuta cada turno con el sandbox elegido y sin solicitudes de aprobación interactivas. Copilot requiere `--allow-all-tools` en modo no interactivo: en solo lectura recibe únicamente herramientas de inspección; en edición usa `--assisted-approval`, con la verificación de rutas propia de Copilot. Si necesitas revisar cada permiso en persona, usa la CLI oficial directamente. OpenCode usa sus agentes `plan` y `build`; verifica los permisos de tu instalación antes de asignarle trabajo de edición.
+**Estado actual:** la interfaz principal, cadenas y pestañas con PTY funcionan. La gestión completa de agentes, catálogos de modelos, Markdown editable y delegación automática sigue pendiente; las vistas correspondientes lo indican. No se ha validado todavía una ejecución real contra las cuentas del usuario en este entorno. Ejecuta `npm test` para comprobar el motor, la PTY y la configuración. Véase [análisis del brief](docs/brief-kurapika.md) para los hitos y límites.
 
-La vista **Tareas** transmite la salida estructurada de cada ejecución y reanuda la sesión nativa entre turnos. La vista **Terminal interactiva** mantiene una PTY real mediante `script` mientras Kurapika está abierto; al cerrar la aplicación se detienen esos procesos. La pantalla se representa como texto de ancho fijo y acepta líneas completas. Los programas que requieran teclas especiales o controles gráficos avanzados pueden necesitar su terminal oficial. Electron usa una ventana aislada y un puente IPC de funciones concretas para comunicarse con el motor local.
-
-Ver [arquitectura de sesiones nativas](docs/ecosistema-nativo.md) para el diseño y [análisis del fork](docs/analisis-adaptacion.md) para el contexto del proyecto original. Ejecuta `npm test` para validar las reglas de despacho.
+La ilustración de fondo se preparó a partir de la referencia visual entregada por el usuario. El emulador incluido es `@xterm/xterm` 5.6.0-beta.143 bajo licencia MIT; su aviso está en `public/vendor/xterm/LICENSE`.
 
 ## Referencia heredada del proyecto original
 
