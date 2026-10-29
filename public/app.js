@@ -6,10 +6,13 @@ const cli = {
   claude: { name: 'Claude Code', emblem: 'Cl', subtitle: 'Pendiente' },
 };
 const statuses = { idle: 'Inactivo', starting: 'Iniciando', running: 'Activo', stopping: 'Deteniendo',
-  stopped: 'Detenido', completed: 'Finalizado', failed: 'Falló', interrupted: 'Interrumpido', handoff: 'Entrega manual' };
+  stopped: 'Detenido', completed: 'Finalizado', failed: 'Falló', interrupted: 'Interrumpido',
+  handoff: 'Entrega manual', planning: 'Planificando', pending: 'Pendiente' };
 let state;
 let terminals = [];
 let chains;
+let roles = [];
+let imagePath = null;
 let activeTab = 'orchestrator';
 let activeView = 'terminales';
 const manualTabs = [];
@@ -19,6 +22,42 @@ const terminalViews = new Map();
 let noticeTimer;
 
 const $ = id => document.getElementById(id);
+function selectedResult() {
+  const value = $('result-provider').value;
+  if (value === 'workflow') return { id: 'workflow', role: false, workflow: true,
+    agent: state.workflow || { status: 'idle', output: '' } };
+  return value.startsWith('role:')
+    ? { id: value.slice(5), role: true, agent: state.roles[value.slice(5)] }
+    : { id: value, role: false, agent: state.agents[value] };
+}
+function refreshRoleSelectors() {
+  const choice = $('role-select').value;
+  const result = $('result-provider').value;
+  $('role-select').replaceChildren(new Option('CLI directa', ''), new Option('Flujo coordinado · Codex planifica', 'workflow'));
+  for (const role of roles) $('role-select').append(new Option(`${role.label} · ${role.provider}`, role.id));
+  $('role-select').value = choice === 'workflow' || roles.some(role => role.id === choice) ? choice : '';
+  for (const option of [...$('result-provider').options]) if (option.value.startsWith('role:')) option.remove();
+  if (![...$('result-provider').options].some(option => option.value === 'workflow'))
+    $('result-provider').append(new Option('Flujo coordinado', 'workflow'));
+  for (const role of roles) $('result-provider').append(new Option(`${role.label} · ${role.provider}`, `role:${role.id}`));
+  $('result-provider').value = result || 'codex';
+  updateTaskMode();
+}
+function updateTaskMode() {
+  const role = roles.find(item => item.id === $('role-select').value);
+  const workflow = $('role-select').value === 'workflow';
+  $('direct-provider-label').hidden = Boolean(role || workflow);
+  $('direct-mode-label').hidden = Boolean(role || workflow);
+  $('mode-hint').textContent = workflow ? 'Codex planifica hasta 6 pasos y Kurapika los ejecuta en orden.' : role
+    ? `${role.provider} · ${role.model}${role.effort !== 'default' ? ` · ${role.effort}` : ''} · ${role.mode === 'edit' ? 'puede editar' : 'solo lectura'}.`
+    : $('provider-select').value === 'antigravity' ? 'La entrega será manual desde Antigravity.'
+      : $('mode-select').value === 'edit' ? 'La CLI podrá modificar el proyecto.' : 'El agente inspeccionará el proyecto.';
+  const acceptsImage = role && ['visual-qa', 'ui-designer'].includes(role.id);
+  $('image-row').hidden = !acceptsImage;
+  if (!acceptsImage) imagePath = null;
+  $('image-name').textContent = imagePath ? imagePath.split('/').at(-1) : 'Sin captura';
+  $('clear-image').hidden = !imagePath;
+}
 function node(tag, className, text) {
   const item = document.createElement(tag);
   if (className) item.className = className;
@@ -157,13 +196,16 @@ function renderOrchestrator() {
   $('footer-path').textContent = state.workspace;
   $('toolbar-path').title = state.workspace;
   $('footer-path').title = state.workspace;
-  const provider = $('result-provider').value;
-  const agent = state.agents[provider];
+  const { id, role, workflow, agent } = selectedResult();
+  if (!agent) return;
   $('result-status').textContent = statuses[agent.status] || agent.status;
-  $('result-output').textContent = agent.output || 'Las respuestas aparecerán aquí.';
+  $('result-output').textContent = workflow && state.workflow
+    ? `${agent.output || ''}${agent.current ? `\n\nPaso actual: ${agent.current}` : ''}`
+    : agent.output || 'Las respuestas aparecerán aquí.';
   $('use-output').disabled = !agent.output;
-  $('stop-task').disabled = agent.status !== 'running';
-  const manual = provider === 'antigravity' && agent.status === 'handoff';
+  $('stop-task').disabled = workflow ? !['planning', 'running'].includes(agent.status) : agent.status !== 'running';
+  $('reset-session').disabled = Boolean(workflow);
+  const manual = !role && id === 'antigravity' && agent.status === 'handoff';
   $('handoff-area').hidden = !manual;
   if (manual) $('handoff-text').textContent = agent.handoff || agent.task;
   const activity = $('activity-list'); activity.replaceChildren();
@@ -177,7 +219,10 @@ function render() {
   for (const [id, view] of terminalViews) if (!terminals.some(session => session.id === id)) {
     view.term.dispose(); view.host.remove(); terminalViews.delete(id);
   }
-  if (activeView !== 'terminales') renderDrawer();
+  if (activeView === 'agentes') for (const role of roles) {
+    const item = $('drawer-body').querySelector(`[data-role-id="${role.id}"] .role-state`);
+    if (item) item.textContent = `Permiso: ${role.mode === 'edit' ? 'edición' : 'lectura'} · Estado: ${statuses[state.roles[role.id]?.status] || 'Inactivo'}`;
+  }
 }
 
 function selectTab(id) { activeTab = id; render(); terminalViews.get(id)?.term.focus(); }
@@ -248,7 +293,7 @@ function renderDrawer() {
       label.placeholder = 'Nombre opcional'; label.setAttribute('aria-label', `Nombre de cadena ${index + 1}`);
       const save = node('button', '', 'Guardar'); save.type = 'button';
       save.addEventListener('click', async () => {
-        try { chains = await window.kurapika.assignChain(index, select.value || null, label.value); render(); notice('Cadena actualizada.'); }
+        try { chains = await window.kurapika.assignChain(index, select.value || null, label.value); render(); renderDrawer(); notice('Cadena actualizada.'); }
         catch (error) { notice(error.message, true); }
       });
       row.append(select, label, save); section.append(row);
@@ -258,23 +303,52 @@ function renderDrawer() {
     for (let index = 0; index < 4; index++) {
       const button = node('button', '', `${index + 1} ↔ ${index + 2}`); button.type = 'button';
       button.addEventListener('click', async () => {
-        try { chains = await window.kurapika.swapChains(index, index + 1); render(); notice('Cadenas intercambiadas.'); }
+        try { chains = await window.kurapika.swapChains(index, index + 1); render(); renderDrawer(); notice('Cadenas intercambiadas.'); }
         catch (error) { notice(error.message, true); }
       });
       swaps.append(button);
     }
     section.append(swaps); body.append(section);
   } else if (activeView === 'agentes') {
-    body.append(node('p', 'drawer-note', 'El repositorio incluye prompts de agentes heredados de OpenCode. Su registro editable y la asignación de modelos se incorporarán en la siguiente fase.'));
-    const list = node('ul', 'drawer-list');
-    body.append(list);
-    window.kurapika.getAgentTemplates().then(templates => {
-      for (const template of templates) {
-        const item = node('li'); item.append(node('strong', '', template.id), node('small', '', template.file)); list.append(item);
-      }
-    }).catch(error => { list.append(node('li', '', error.message)); });
+    body.append(node('p', 'drawer-note', 'Cada rol conserva su propia sesión. Cambia ejecutor o modelo antes de iniciar una nueva sesión. Copilot Student usa Auto; Antigravity requiere entrega manual.'));
+    for (const role of roles) {
+      const section = node('section', 'drawer-section role-card');
+      section.dataset.roleId = role.id;
+      section.append(node('h3', '', `${role.label} · ${role.id}`), node('p', 'drawer-note', role.summary));
+      const row = node('div', 'slot-row');
+      const provider = node('select'); provider.setAttribute('aria-label', `Ejecutor de ${role.label}`);
+      for (const value of ['codex', 'copilot', 'opencode']) provider.append(new Option(cli[value].name, value));
+      provider.value = role.provider;
+      const model = node('input'); model.type = 'text'; model.value = role.model; model.maxLength = 80;
+      model.setAttribute('aria-label', `Modelo de ${role.label}`);
+      const effort = node('select'); effort.setAttribute('aria-label', `Esfuerzo de ${role.label}`);
+      for (const value of ['default', 'low', 'medium', 'high']) effort.append(new Option(value, value));
+      effort.value = role.effort;
+      effort.disabled = role.provider === 'copilot';
+      provider.addEventListener('change', () => {
+        model.value = provider.value === 'copilot' ? 'auto' : provider.value === 'codex' ? 'default' : 'opencode/minimax-m2.5-free';
+        effort.value = 'default'; effort.disabled = provider.value === 'copilot';
+      });
+      const save = node('button', '', 'Guardar'); save.type = 'button';
+      save.addEventListener('click', async () => {
+        try { roles = await window.kurapika.assignRole(role.id, provider.value, model.value.trim(), effort.value); refreshRoleSelectors(); renderDrawer(); notice(`${role.label}: asignación guardada.`); }
+        catch (error) { notice(error.message, true); }
+      });
+      row.append(provider, model, effort, save); section.append(row);
+      section.append(node('small', 'role-state', `Permiso: ${role.mode === 'edit' ? 'edición' : 'lectura'} · Estado: ${statuses[state.roles[role.id]?.status] || 'Inactivo'}`));
+      body.append(section);
+    }
   } else if (activeView === 'modelos') {
-    body.append(node('p', 'drawer-note', 'El catálogo se consultará a cada CLI autenticada. Kurapika aún no valida modelos por agente; las terminales usan la selección nativa de cada herramienta.'));
+    body.append(node('p', 'drawer-note', 'Catálogos visibles en tus CLIs. La lista de Codex puede estar en caché; una tarea real confirma el acceso. Copilot Student usa Auto.'));
+    const refresh = node('button', 'catalog-refresh', 'Actualizar catálogos'); refresh.type = 'button';
+    refresh.addEventListener('click', () => renderModelCatalog(body)); body.append(refresh);
+    const catalog = node('div', 'catalog-results'); body.append(catalog);
+    renderModelCatalog(body);
+    body.append(node('h3', '', 'Asignaciones actuales'));
+    const list = node('ul', 'drawer-list'); body.append(list);
+    for (const role of roles) {
+      const item = node('li'); item.append(node('strong', '', role.label), node('small', '', `${role.provider} · ${role.model} · ${role.effort}`)); list.append(item);
+    }
   } else if (activeView === 'archivos') {
     body.append(node('p', 'drawer-note', 'La edición segura de instrucciones Markdown está pendiente. Los archivos originales están en la carpeta agents/ del repositorio.'));
   } else if (activeView === 'herramientas') {
@@ -289,9 +363,34 @@ function renderDrawer() {
   }
 }
 
+async function renderModelCatalog(body) {
+  const host = body.querySelector('.catalog-results');
+  if (!host) return;
+  host.replaceChildren(node('p', 'drawer-note', 'Consultando modelos…'));
+  const results = await Promise.allSettled(['codex', 'copilot', 'opencode'].map(provider => window.kurapika.listModels(provider)));
+  if (!host.isConnected) return;
+  host.replaceChildren();
+  for (const [index, provider] of ['codex', 'copilot', 'opencode'].entries()) {
+    const section = node('section', 'drawer-section'); section.append(node('h3', '', cli[provider].name));
+    const result = results[index];
+    if (result.status === 'rejected') section.append(node('p', 'drawer-note', result.reason.message));
+    else if (!result.value.length) section.append(node('p', 'drawer-note', 'Sin modelos visibles en esta CLI.'));
+    else {
+      const list = node('ul', 'drawer-list');
+      for (const model of result.value) {
+        const item = node('li'); item.append(node('strong', '', model.label));
+        if (model.note) item.append(node('small', '', model.note));
+        list.append(item);
+      }
+      section.append(list);
+    }
+    host.append(section);
+  }
+}
+
 document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', () => openDrawer(item.dataset.view)));
 $('drawer-close').addEventListener('click', () => openDrawer('terminales'));
-$('manual-to-orchestrator').addEventListener('click', () => { $('provider-select').value = 'antigravity'; selectTab('orchestrator'); $('task-prompt').focus(); });
+$('manual-to-orchestrator').addEventListener('click', () => { $('role-select').value = ''; $('provider-select').value = 'antigravity'; updateTaskMode(); selectTab('orchestrator'); $('task-prompt').focus(); });
 $('footer-agents').addEventListener('click', () => openDrawer('agentes'));
 for (const id of ['footer-workspace', 'toolbar-workspace']) $(id).addEventListener('click', async () => {
   try { state = await window.kurapika.chooseWorkspace(); terminals = await window.kurapika.getTerminals(); render(); }
@@ -307,35 +406,46 @@ $('new-terminal-dialog').addEventListener('close', () => {
   openTerminal($('new-provider').value, $('new-mode').value).catch(error => notice(error.message, true));
 });
 $('provider-select').addEventListener('change', () => {
-  $('mode-hint').textContent = $('provider-select').value === 'antigravity'
-    ? 'La entrega será manual desde Antigravity.' : $('mode-select').value === 'edit' ? 'La CLI podrá modificar el proyecto.' : 'El agente inspeccionará el proyecto.';
+  updateTaskMode();
 });
 $('mode-select').addEventListener('change', () => $('provider-select').dispatchEvent(new Event('change')));
+$('role-select').addEventListener('change', updateTaskMode);
+$('choose-image').addEventListener('click', async () => {
+  try { const selected = await window.kurapika.chooseScreenshot(); if (selected) { imagePath = selected; updateTaskMode(); } }
+  catch (error) { notice(error.message, true); }
+});
+$('clear-image').addEventListener('click', () => { imagePath = null; updateTaskMode(); });
 $('result-provider').addEventListener('change', renderOrchestrator);
 $('task-form').addEventListener('submit', async event => {
   event.preventDefault();
+  const roleId = $('role-select').value;
   const provider = $('provider-select').value;
   const prompt = $('task-prompt').value.trim(); if (!prompt) return;
   const button = $('task-form').querySelector('button[type="submit"]'); button.disabled = true;
   try {
-    state = await window.kurapika.sendTask({ provider, mode: $('mode-select').value, prompt });
-    $('task-prompt').value = ''; $('result-provider').value = provider; renderOrchestrator();
-    notice(provider === 'antigravity' ? 'Entrega manual preparada.' : `Tarea enviada a ${cli[provider].name}.`);
+    state = roleId === 'workflow' ? await window.kurapika.startWorkflow({ prompt })
+      : roleId ? await window.kurapika.sendRoleTask({ roleId, prompt, imagePath })
+        : await window.kurapika.sendTask({ provider, mode: $('mode-select').value, prompt });
+    $('task-prompt').value = ''; imagePath = null; updateTaskMode();
+    $('result-provider').value = roleId === 'workflow' ? 'workflow' : roleId ? `role:${roleId}` : provider;
+    renderOrchestrator();
+    notice(roleId === 'workflow' ? 'Flujo coordinado iniciado.' : roleId ? `Tarea enviada a ${roleId}.`
+      : provider === 'antigravity' ? 'Entrega manual preparada.' : `Tarea enviada a ${cli[provider].name}.`);
   } catch (error) { notice(error.message, true); }
   finally { button.disabled = false; }
 });
 $('use-output').addEventListener('click', () => {
-  const provider = $('result-provider').value; const output = state.agents[provider].output;
+  const { id, role, workflow, agent } = selectedResult(); const output = agent.output;
   if (!output) return;
-  $('task-prompt').value = `Contexto de ${cli[provider].name}:\n${output.slice(-8000)}\n\nNueva tarea: `;
+  $('task-prompt').value = `Contexto de ${workflow ? 'flujo coordinado' : role ? id : cli[id].name}:\n${output.slice(-8000)}\n\nNueva tarea: `;
   $('task-prompt').focus(); notice('Resultado añadido al borrador.');
 });
 $('reset-session').addEventListener('click', async () => {
-  try { state = await window.kurapika.reset($('result-provider').value); renderOrchestrator(); notice('Nueva sesión preparada.'); }
+  try { const { id, role, workflow } = selectedResult(); if (workflow) return; state = role ? await window.kurapika.resetRole(id) : await window.kurapika.reset(id); renderOrchestrator(); notice('Nueva sesión preparada.'); }
   catch (error) { notice(error.message, true); }
 });
 $('stop-task').addEventListener('click', async () => {
-  try { state = await window.kurapika.stop($('result-provider').value); renderOrchestrator(); notice('Se solicitó detener la tarea.'); }
+  try { const { id, role, workflow } = selectedResult(); state = workflow ? await window.kurapika.stopWorkflow() : role ? await window.kurapika.stopRole(id) : await window.kurapika.stop(id); renderOrchestrator(); notice('Se solicitó detener la tarea.'); }
   catch (error) { notice(error.message, true); }
 });
 $('copy-handoff').addEventListener('click', async () => {
@@ -359,9 +469,9 @@ window.kurapika.onTerminalData(event => {
   else if (event.sequence > view.lastSequence) { view.term.write(decode(event.data)); view.lastSequence = event.sequence; }
 });
 
-Promise.all([window.kurapika.getState(), window.kurapika.getTerminals(), window.kurapika.getChains()])
-  .then(([current, sessions, config]) => {
-    state = current; terminals = sessions; chains = config; render();
+Promise.all([window.kurapika.getState(), window.kurapika.getTerminals(), window.kurapika.getChains(), window.kurapika.getRoles()])
+  .then(([current, sessions, config, assignments]) => {
+    state = current; terminals = sessions; chains = config; roles = assignments; refreshRoleSelectors(); render();
     for (const provider of Object.keys(cli)) window.kurapika.checkExecutor(provider)
       .then(result => { executorStatus.set(provider, result); renderChains(); })
       .catch(() => {});

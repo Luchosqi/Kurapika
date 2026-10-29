@@ -16,24 +16,32 @@ export function validateTask(input) {
   return { provider, mode, prompt };
 }
 
-export function buildCommand({ provider, mode, prompt, sessionId, workspace }) {
+export function buildCommand({ provider, mode, prompt, sessionId, workspace, model = 'default', roleId, instruction, imagePath,
+  outputSchema, outputFile, effort = 'default' }) {
   if (!PROVIDERS.includes(provider) || provider === 'antigravity') {
     throw new Error('Este proveedor requiere entrega manual.');
   }
   if (!MODES.includes(mode)) throw new Error('Modo desconocido.');
 
   const guard = mode === 'inspect'
-    ? 'Solo inspecciona y explica. No modifiques archivos ni ejecutes operaciones externas.'
+    ? roleId === 'tester' ? 'Puedes ejecutar pruebas locales para verificar el proyecto. No modifiques archivos ni ejecutes operaciones externas.'
+      : 'Solo inspecciona y explica. No modifiques archivos ni ejecutes operaciones externas.'
     : 'Trabaja solo dentro del proyecto asignado. Resume cambios y verificaciones reales.';
-  const message = `Tarea asignada por Kurapika. ${guard}\n\n${prompt}`;
+  const roleContext = roleId && instruction ? `Rol: ${roleId}.\nInstrucciones del rol:\n${instruction}\n\n` : '';
+  const message = `Tarea asignada por Kurapika. ${guard}\n\n${roleContext}${prompt}`;
 
   if (provider === 'codex') {
     const sandbox = mode === 'inspect' ? 'read-only' : 'workspace-write';
     const policy = ['-c', 'approval_policy="never"'];
+    if (effort !== 'default') policy.push('-c', `model_reasoning_effort="${effort}"`);
+    const selectedModel = model !== 'default' ? ['-m', model] : [];
+    const image = imagePath ? ['-i', imagePath] : [];
     if (sessionId) {
-      return { command: 'codex', args: ['exec', 'resume', '--json', '-c', `sandbox_mode="${sandbox}"`, ...policy, sessionId, message], sessionId };
+      return { command: 'codex', args: ['exec', 'resume', '--json', '-c', `sandbox_mode="${sandbox}"`, ...policy, ...selectedModel, ...image, sessionId, message], sessionId };
     }
-    const args = ['exec', '--json', '-s', sandbox, ...policy, '-C', workspace];
+    const args = ['exec', '--json', '-s', sandbox, ...policy, ...selectedModel, ...image, '-C', workspace];
+    if (outputSchema) args.push('--output-schema', outputSchema);
+    if (outputFile) args.push('-o', outputFile);
     args.push(message);
     return { command: 'codex', args, sessionId: null };
   }
@@ -43,11 +51,15 @@ export function buildCommand({ provider, mode, prompt, sessionId, workspace }) {
     const args = ['-C', workspace, '--model', 'auto', '--session-id', id, '--no-ask-user', '--no-color', '--allow-all-tools'];
     if (mode === 'inspect') args.push('--available-tools', 'view,glob,grep');
     else args.push('--assisted-approval');
+    if (imagePath) args.push('--attachment', imagePath);
     args.push('-p', message);
     return { command: 'copilot', args, sessionId: id };
   }
 
   const args = ['run', '--format', 'json', '--agent', mode === 'inspect' ? 'plan' : 'build'];
+  if (model !== 'default') args.push('--model', model);
+  if (effort !== 'default') args.push('--variant', effort);
+  if (imagePath) args.push('--file', imagePath);
   if (sessionId) args.push('--session', sessionId);
   args.push(message);
   return { command: 'opencode', args, sessionId: sessionId || null };

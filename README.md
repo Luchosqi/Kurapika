@@ -26,7 +26,13 @@ Las cinco cadenas son accesos reasignables desde **Configuración**. Al pulsar u
 
 Cada CLI conserva su autenticación propia. El inicio de una terminal comprueba instalación, pero los fallos de autenticación se muestran cuando la CLI arranca. El Orquestador conserva el envío de tareas por turno, su salida y el paso manual de resultados como contexto. Solo una tarea o terminal con permiso de edición puede estar activa en el proyecto a la vez; cambiar de proyecto requiere cerrar procesos activos.
 
-**Estado actual:** la interfaz principal, cadenas y pestañas con PTY funcionan. La gestión completa de agentes, catálogos de modelos, Markdown editable y delegación automática sigue pendiente; las vistas correspondientes lo indican. No se ha validado todavía una ejecución real contra las cuentas del usuario en este entorno. Ejecuta `npm test` para comprobar el motor, la PTY y la configuración. Véase [análisis del brief](docs/brief-kurapika.md) para los hitos y límites.
+## Agentes y flujo coordinado
+
+El selector **Agente** permite enviar una tarea a cualquiera de los 12 roles heredados. Cada rol mantiene su propia sesión y salida. En **Agentes** puedes cambiar su CLI, modelo y esfuerzo; las asignaciones se guardan en `roles.json` dentro de los datos de usuario de Electron. Copilot Student queda fijado en `auto`. Los modelos de OpenCode se leen de la CLI local; la vista **Modelos** muestra los catálogos visibles de OpenCode y Codex. La lista de Codex puede venir de caché: una ejecución real confirma acceso. `visual-qa` exige adjuntar una captura PNG, JPEG o WebP antes de enviarlo.
+
+**Flujo coordinado** usa Codex para producir un plan JSON de hasta seis pasos. Kurapika valida los roles, ejecuta cada paso en orden, pasa un resumen de resultados al siguiente y se detiene si un paso falla. Los roles de edición no corren simultáneamente. La revisión visual requiere una captura y se lanza por separado. Antigravity permanece como entrega manual en su aplicación oficial.
+
+**Estado actual:** interfaz, terminales PTY, roles, asignaciones, catálogos y motor del flujo están implementados y tienen pruebas con CLIs simuladas. Falta validar una ejecución real contra las cuentas del usuario y revisar la interfaz renderizada en Electron. La edición de Markdown desde la app sigue pendiente. En este entorno `npm install` no pudo resolver `registry.npmjs.org`, por lo que Electron no se inició aquí. Ejecuta `npm test` para comprobar el motor y la configuración. Véase [análisis del brief](docs/brief-kurapika.md) para los hitos y límites.
 
 La ilustración de fondo se preparó a partir de la referencia visual entregada por el usuario. El emulador incluido es `@xterm/xterm` 5.6.0-beta.143 bajo licencia MIT; su aviso está en `public/vendor/xterm/LICENSE`.
 

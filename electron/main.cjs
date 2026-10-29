@@ -24,6 +24,7 @@ let window;
 let engine;
 let terminals;
 let chains;
+let roles;
 let checkExecutor;
 
 function isAppPage(value) {
@@ -89,18 +90,21 @@ app.whenReady().then(async () => {
     return net.fetch(pathToFileURL(path.join(ROOT, 'public', asset)).toString());
   });
 
-  const [{ KurapikaEngine }, { TerminalManager }, { ChainConfigStore }, executors] = await Promise.all([
-    import('../app/engine.mjs'), import('../app/terminal.mjs'), import('../app/config.mjs'), import('../app/executors.mjs'),
+  const [{ KurapikaEngine }, { TerminalManager }, { ChainConfigStore }, { RoleConfigStore }, { listModels }, executors] = await Promise.all([
+    import('../app/engine.mjs'), import('../app/terminal.mjs'), import('../app/config.mjs'), import('../app/roles.mjs'), import('../app/models.mjs'), import('../app/executors.mjs'),
   ]);
   checkExecutor = executors.checkExecutor;
   const settingsFile = path.join(app.getPath('userData'), 'settings.json');
   chains = new ChainConfigStore(path.join(app.getPath('userData'), 'chains.json'));
+  roles = new RoleConfigStore(path.join(app.getPath('userData'), 'roles.json'));
   const stateDir = process.env.KURAPIKA_STATE_DIR || path.join(app.getPath('userData'), 'sessions');
-  engine = new KurapikaEngine({ workspace: loadPreferredWorkspace(settingsFile), stateDir });
+  engine = new KurapikaEngine({ workspace: loadPreferredWorkspace(settingsFile), stateDir,
+    roleStore: roles, agentsDirectory: path.join(ROOT, 'agents') });
   terminals = new TerminalManager({
     workspace: engine.workspace,
-    editing: () => Object.values(engine.state.agents).some(agent =>
-      agent.mode === 'edit' && (agent.status === 'running' || agent.status === 'stopping')),
+    editing: () => (engine.state.workflow && ['planning', 'running', 'stopping'].includes(engine.state.workflow.status)) ||
+      [...Object.values(engine.state.agents), ...Object.values(engine.state.roles)].some(agent =>
+        agent.mode === 'edit' && (agent.status === 'running' || agent.status === 'stopping')),
   });
   engine.terminals = terminals;
   engine.on('state', state => {
@@ -118,6 +122,39 @@ app.whenReady().then(async () => {
   handle('kurapika:stop', provider => engine.stop(provider));
   handle('kurapika:reset', provider => engine.reset(provider));
   handle('kurapika:record-result', result => engine.recordResult(result));
+  handle('kurapika:get-roles', () => roles.get());
+  handle('kurapika:list-models', provider => listModels(provider));
+  handle('kurapika:choose-screenshot', async () => {
+    const choice = await dialog.showOpenDialog(window, {
+      title: 'Seleccionar captura de pantalla',
+      properties: ['openFile'],
+      filters: [{ name: 'Imágenes', extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
+    });
+    return choice.canceled ? null : choice.filePaths[0];
+  });
+  handle('kurapika:assign-role', (roleId, provider, model, effort) => {
+    if (engine.state.workflow && ['planning', 'running', 'stopping'].includes(engine.state.workflow.status)) {
+      throw new Error('Espera a que termine el flujo coordinado para cambiar asignaciones.');
+    }
+    const current = engine.state.roles[roleId];
+    if (current?.status === 'running' || current?.status === 'stopping') throw new Error('Detén este agente antes de cambiar su modelo.');
+    return roles.assign(roleId, provider, model, effort);
+  });
+  handle('kurapika:send-role-task', task => {
+    const assignment = roles.get().find(role => role.id === task?.roleId);
+    if (!assignment) throw new Error('Agente desconocido.');
+    const available = checkExecutor(assignment.provider);
+    if (!available.installed || !available.supported) throw new Error(available.reason);
+    return engine.sendRoleTask(task);
+  });
+  handle('kurapika:stop-role', roleId => engine.stopRole(roleId));
+  handle('kurapika:reset-role', roleId => engine.resetRole(roleId));
+  handle('kurapika:start-workflow', task => {
+    const available = checkExecutor('codex');
+    if (!available.installed || !available.supported) throw new Error(available.reason);
+    return engine.startWorkflow(task);
+  });
+  handle('kurapika:stop-workflow', () => engine.stopWorkflow());
   handle('kurapika:get-agent-templates', () => fs.readdirSync(path.join(ROOT, 'agents'), { withFileTypes: true })
     .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
     .map(entry => ({ id: entry.name.slice(0, -3), file: `agents/${entry.name}` })));

@@ -21,10 +21,10 @@ Referencia recibida: `BRIEF_CODEX_CHAIN_ORCHESTRATOR.md` y captura `CHAIN_ORCHES
 
 ## Pendiente
 
-1. Registro dinámico de agentes con edición segura de Markdown, permisos, herramientas e historial por agente. La vista actual de Agentes solo describe los prompts heredados.
-2. Catálogo real de modelos por ejecutor y validación de combinaciones. La vista de Modelos declara que aún no consulta el catálogo.
-3. Harness de planificación, delegación, trazabilidad y worktrees para aislar ediciones paralelas. La pestaña de Orquestador conserva el despacho manual por turnos.
-4. Validar autenticación y comportamiento TUI de Codex, Copilot y OpenCode con las cuentas del usuario en una sesión gráfica real. Las pruebas actuales emplean CLIs falsas y una vista renderizada en Chrome; no equivalen a una ejecución autenticada.
+1. Editar con seguridad los prompts Markdown, permisos y herramientas desde la aplicación. El registro de los 12 roles, sus asignaciones y el historial por rol ya funcionan en el motor.
+2. Confirmar con una inferencia real los modelos de cada cuenta. La vista Modelos ya consulta OpenCode y el catálogo de Codex cuando su app-server responde; Copilot Student solo muestra Auto.
+3. Validar el flujo coordinado con las cuentas reales. El harness actual crea un plan JSON de hasta seis pasos, ejecuta roles en orden y detiene el flujo ante fallos. Aún no aísla ediciones mediante worktrees; solo permite una edición activa.
+4. Validar autenticación y comportamiento TUI de Codex, Copilot y OpenCode con las cuentas del usuario en una sesión gráfica real. Las pruebas actuales emplean CLIs falsas y no equivalen a una ejecución autenticada.
 5. Revisar el emulador incluido contra una versión estable de xterm en una instalación con acceso a npm y realizar QA de Electron nativo; este entorno bloqueó la instalación y el arranque gráfico de Electron.
 
 ## Decisiones de arquitectura
@@ -32,7 +32,7 @@ Referencia recibida: `BRIEF_CODEX_CHAIN_ORCHESTRATOR.md` y captura `CHAIN_ORCHES
 - `ChainSlot` se implementa en `app/config.mjs`. Es un acceso visual; no contiene un agente ni modelo.
 - `TerminalSession` se implementa en `app/terminal.mjs`, con IDs únicos y proveedor/permiso/workspace por pestaña. El puente `app/pty_bridge.py` solo acepta ejecutores y flags fijados por el adaptador, además de entrada, resize y señales; el renderer no obtiene un shell arbitrario por IPC.
 - `TaskRun` sigue en `app/engine.mjs`; sus IDs de sesión de CLI son distintos de los IDs de pestaña.
-- `CliAdapter`, `AgentDefinition`, `ModelDefinition` y `HarnessAdapter` necesitan contratos propios en próximos hitos. La UI marca esas áreas como pendientes en vez de crear datos ficticios.
+- `RoleConfigStore` mantiene las asignaciones por rol; `KurapikaEngine` separa las sesiones de roles de las sesiones directas por proveedor. `app/models.mjs` consulta los catálogos visibles. El flujo coordinado usa un esquema JSON y ejecución secuencial; futuras versiones pueden aislar edición paralela con worktrees.
 - El fondo es un arte raster; cadenas, pestañas y controles son DOM interactivo. El arte no contiene botones ni texto que puedan confundirse con controles.
 
 ## Verificación manual prevista

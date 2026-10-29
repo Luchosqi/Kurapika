@@ -402,9 +402,10 @@ font-size:11px;
 font-weight:650}
 .task-row{
 display:grid;
-grid-template-columns:1fr 1fr;
+grid-template-columns:repeat(3,minmax(0,1fr));
 gap:12px;
 margin-bottom:12px}
+.task-row [hidden]{display:none}
 .task-form select,.task-form textarea,.result-head select,.handoff-area textarea,.session-dialog select,.slot-row select,.slot-row input{
 background:rgba(9,29,58,.88);
 border:1px solid rgba(80,159,245,.3);
@@ -425,6 +426,11 @@ padding:10px 12px;
 font:12px/1.5 ui-monospace,monospace}
 .task-form textarea::placeholder{
 color:#8aa9c8}
+.image-row{display:flex;align-items:center;gap:10px;margin-top:8px;color:var(--muted);font-size:11px}
+.image-row[hidden]{display:none}
+.image-row button,.catalog-refresh{border:1px solid var(--line);border-radius:5px;background:rgba(20,67,119,.7);color:#c6e6ff;padding:6px 9px}
+.catalog-refresh{margin-bottom:15px}
+.catalog-results{max-height:260px;overflow:auto;margin-bottom:20px;border-bottom:1px solid var(--line)}
 .task-actions{
 display:flex;
 align-items:center;
@@ -645,6 +651,14 @@ background:rgba(20,67,119,.7);
 color:#c6e6ff}
 .slot-row button:hover{
 background:rgba(34,113,196,.8)}
+.role-card{
+padding:13px;
+border:1px solid var(--line);
+border-radius:8px;
+background:rgba(7,29,58,.56)}
+.role-card .drawer-note{margin-bottom:6px}
+.role-card .slot-row{grid-template-columns:minmax(90px,1fr) minmax(125px,1.3fr) minmax(80px,.7fr) auto}
+.role-state{color:#8fb7dd}
 .drawer-list{
 list-style:none;
 padding:0;

@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "steps"],
+  "properties": {
+    "summary": { "type": "string" },
+    "steps": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["roleId", "prompt"],
+        "properties": {
+          "roleId": { "type": "string", "enum": ["plan", "architect", "reviewer-critical", "ui-designer", "build", "ui-builder", "general", "explore", "tester", "reviewer"] },
+          "prompt": { "type": "string" }
+        }
+      }
+    }
+  }
+}
